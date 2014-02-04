@@ -13,9 +13,9 @@ import (
 // N = SeedAlphaSize.)
 // Invalid amino acid resiudes map to -1 and will produce a panic.
 var (
-	SeedAlphaSize        = len(blosum.Alphabet62)
-	SeedAlphaNums        = make([]int, 26)
-	ReverseSeedAlphaNums = make([]byte, 26)
+	SeedAlphaSize        = len(4) // skip k-mers containing 'N'
+	SeedAlphaNums        = make([]int, 4)
+	ReverseSeedAlphaNums = make([]byte, 4)
 )
 
 // Populate SeedAlphaNums and ReverseSeedAlphaNums using the BLOSUM62
@@ -141,11 +141,15 @@ func (ss *Seeds) Add(coarseSeqIndex int, corSeq *CoarseSeq) {
 	// Don't use defer. It comes with a performance penalty in hot spots.
 
 	for i := 0; i < corSeq.Len()-ss.SeedSize; i++ {
+    
+		kmer := corSeq.Residues[i : i+ss.SeedSize]
+    if bytes.IndexByte(kmer, 'N') > -1 {
+      continue
+    }
+    
 		if IsLowComplexity(corSeq.Residues, i, ss.lowComplexityWindow) {
 			continue
 		}
-
-		kmer := corSeq.Residues[i : i+ss.SeedSize]
 
 		kmerIndex := ss.hashKmer(kmer)
 		loc := NewSeedLoc(uint32(coarseSeqIndex), uint16(i))

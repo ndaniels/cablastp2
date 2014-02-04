@@ -41,7 +41,7 @@ type CompressedDB struct {
 
 	// A compressed database is stored in CSV format. Each CSV record contains
 	// the original sequence's header, followed by a list of quadruples, where
-	// each quadruple is a pointer to a region in the coarse database: a coarse
+	// each quadruple is a pointer to a region ina the coarse database: a coarse
 	// sequence identifier, the start/end of the coarse sequence, and an edit
 	// script. Combined, this information can recover the original sequence
 	// in full.
