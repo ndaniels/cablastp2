@@ -105,7 +105,7 @@ func (seq *sequence) newSubSequence(start, end uint) *sequence {
 		panic(fmt.Sprintf("Invalid sub sequence (%d, %d) for sequence "+
 			"with length %d.", start, end, seq.Len()))
 	}
-	s := newSeq(seq.Id, seq.Name, seq.Residues[start:end])
+	s := newSeq(seq.Id, seq.Name, reduce(seq.Residues[start:end]))
 	s.Offset += start
 	return s
 }

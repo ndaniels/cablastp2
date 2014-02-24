@@ -1,6 +1,5 @@
 package cablastp
 
-
 func reduce1(char byte) byte {
 	switch char {
 	case 'F', 'W', 'Y':
@@ -18,9 +17,9 @@ func reduce1(char byte) byte {
 }
 
 func reduce(seq []byte) []byte {
-  dest := make([]byte, 0, len(seq))
-  for i, residues := range seq {
-    dest[i] = reduce1(seq[i])
-  }
-  return dest
+	dest := make([]byte, 0, len(seq))
+	for i, residues := range seq {
+		dest[i] = reduce1(seq[i])
+	}
+	return dest
 }

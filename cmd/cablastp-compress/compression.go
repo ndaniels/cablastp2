@@ -78,6 +78,9 @@ func (pool *compressPool) done() {
 	pool.wg.Wait()
 }
 
+// TODO: need to pass around a pair of nativeSeq and reducedSeq
+// What gets saved to disk is nativeSeq
+
 // compress will convert an original sequence into a compressed sequence.
 // The process involves finding commonality in the original sequence with
 // other sequences in the coarse database, and linking those common
@@ -92,6 +95,10 @@ func compress(db *cablastp.DB, orgSeqId int,
 	// of any particular seed in coarse and original sequences, respectively.
 	// If the residues are not equivalent, that particular seed is skipped.
 	var cseqExt, oseqExt []byte
+	
+	// redSeq will hold the reduced-alphabet sequence
+	var redSeq []byte
+	redSeq := reduce(orgSeq.Residues)
 
 	// Start the creation of a compressed sequence.
 	cseq := cablastp.NewCompressedSeq(orgSeqId, orgSeq.Name)
@@ -110,8 +117,13 @@ func compress(db *cablastp.DB, orgSeqId int,
 
 	// Iterate through the original sequence a 'kmer' at a time.
 	for current = 0; current < olen-mapSeedSize-extSeedSize; current++ {
-		kmer := orgSeq.Residues[current : current+mapSeedSize]
+		kmer := redSeq[current : current+mapSeedSize]
 		seeds := coarsedb.Seeds.Lookup(kmer, &mem.seeds)
+		
+	    // skip wildcard-containing kmers
+		if bytes.IndexByte(kmer, 'N') > -1 {
+			continue
+		}
 
 		// Before trying to extend this with seeds, check to see if there is
 		// a low complexity region within `db.MinMatchLen` residues from
@@ -143,60 +155,64 @@ func compress(db *cablastp.DB, orgSeqId int,
 			// If the seed extensions in each sequence are not equivalent,
 			// skip this seedLoc.
 			cseqExt = corSeq.Residues[extCorStart : extCorStart+extSeedSize]
-			oseqExt = orgSeq.Residues[extOrgStart : extOrgStart+extSeedSize]
+			oseqExt = redSeq[extOrgStart : extOrgStart+extSeedSize]
 			if !bytes.Equal(cseqExt, oseqExt) {
 				continue
 			}
 
-			// The "match" between coarse and original sequence will
+			// The "match" between coarse and original (reduced) sequence will
 			// occur somewhere between the the residue index of the seed and
 			// the end of the sequence for the coarse sequence, and the
 			// position of the "current" pointer and the end of the sequence
 			// for the original sequence.
 			corMatch, orgMatch := extendMatch(
-				corSeq.Residues[corResInd:], orgSeq.Residues[current:],
+				corSeq.Residues[corResInd:], redSeq[current:],
 				db.GappedWindowSize, db.UngappedWindowSize,
 				db.MatchKmerSize, db.ExtSeqIdThreshold,
 				mem)
 
-			// If the part of the original sequence does not exceed the
+			// If the part of the original (reduced) sequence does not exceed the
 			// minimum match length, then we don't accept the match and move
 			// on to the next one.
 			if len(orgMatch) < db.MinMatchLen {
 				continue
 			}
+      
+      // TODO: we don't need to realign here if we are just
+      // preserving original sequences.
 
-			alignment := nwAlign(corMatch, orgMatch, mem)
-			id := cablastp.SeqIdentity(alignment[0], alignment[1])
-			if id < db.MatchSeqIdThreshold {
-				continue
-			}
+			// alignment := nwAlign(corMatch, orgMatch, mem)
+		// 	id := cablastp.SeqIdentity(alignment[0], alignment[1])
+		// 	if id < db.MatchSeqIdThreshold {
+		// 		continue
+		// 	}
 
 			// If we end up extending a match because we're close to
 			// some boundary (either a sequence or a match boundary), then
 			// we need to perform another alignment.
-			changed := false
+			// changed := false
 
 			// If we're close to the end of the original sequence, extend
 			// the match to the end.
-			if len(orgMatch)+db.MatchExtend >= orgSeq.Len()-int(current) {
-				orgMatch = orgSeq.Residues[current:]
-				changed = true
+			if len(orgMatch)+db.MatchExtend >= len(redSeq)-int(current) {
+				orgMatch = redSeq[current:]
+				// changed = true
 			}
 
 			// And if we're close to the end of the last match, extend this
 			// match backwards.
 			if current-lastMatch <= db.MatchExtend {
 				end := current + len(orgMatch)
-				orgMatch = orgSeq.Residues[lastMatch:end]
+				orgMatch = redSeq[lastMatch:end]
 				current = lastMatch
-				changed = true
+				// changed = true
 			}
 
 			// If we've extended our match, we need another alignment.
-			if changed {
-				alignment = nwAlign(corMatch, orgMatch, mem)
-			}
+            // TODO: we don't care about the alignment
+			// if changed {
+			// 	alignment = nwAlign(corMatch, orgMatch, mem)
+			// }
 
 			// Otherwise, we accept the first valid match and move on to the
 			// next kmer after the match ends.
@@ -224,7 +240,7 @@ func compress(db *cablastp.DB, orgSeqId int,
 			// serves as a bridge to expand coarse sequences into their
 			// original sequences.
 			cseq.Add(cablastp.NewLinkToCoarse(
-				uint(corSeqId), uint(corStart), uint(corEnd), alignment))
+				uint(corSeqId), uint(corStart), uint(corEnd), orgSeq.Residues))
 			corSeq.AddLink(cablastp.NewLinkToCompressed(
 				uint32(orgSeqId), uint16(corStart), uint16(corEnd)))
 
@@ -366,6 +382,7 @@ func skipLowComplexity(seq []byte, windowSize, regionSize int) int {
 // sequence.
 //
 // An appropriate link is also added to the given compressed sequence.
+// TODO we need to juggle the reduced and original seq portions
 func addWithoutMatch(cseq *cablastp.CompressedSeq,
 	coarsedb *cablastp.CoarseDB, orgSeqId int, orgSub *cablastp.OriginalSeq) {
 

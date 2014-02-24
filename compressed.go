@@ -51,9 +51,8 @@ type CompressedDB struct {
 	seqCache map[int]OriginalSeq
 }
 
-// newWriteCompressedDB creates a new compressed database ready for writing
-// (or opens an existing compressed database and prepares it for appending).
-func newWriteCompressedDB(appnd bool, db *DB) (*CompressedDB, error) {
+// newWriteCompressedDB creates a new compressed database ready for writing.
+func newWriteCompressedDB(db *DB) (*CompressedDB, error) {
 	var err error
 
 	Vprintln("\tOpening compressed database...")
@@ -67,9 +66,6 @@ func newWriteCompressedDB(appnd bool, db *DB) (*CompressedDB, error) {
 	}
 
 	fileFlags := os.O_RDWR | os.O_CREATE | os.O_TRUNC
-	if appnd {
-		fileFlags = os.O_RDWR | os.O_APPEND
-	}
 	cdb.File, err = os.OpenFile(db.filePath(FileCompressed), fileFlags, 0666)
 	if err != nil {
 		return nil, err
@@ -209,7 +205,7 @@ func (cseq CompressedSeq) String() string {
 	lines := make([]string, len(cseq.Links))
 	for i, link := range cseq.Links {
 		lines[i] = fmt.Sprintf("coarse id: %d, start: %d, end: %d\n%s",
-			link.CoarseSeqId, link.CoarseStart, link.CoarseEnd, link.Diff)
+			link.CoarseSeqId, link.CoarseStart, link.CoarseEnd)
 	}
 	return strings.Join(lines, "\n")
 }
@@ -222,6 +218,7 @@ func (cseq *CompressedSeq) Add(link LinkToCoarse) {
 // Decompress decompresses a particular compressed sequence using the given
 // coarse sequence. Namely, all of the links are followed and all of the
 // edit scripts are "applied" to recover the original sequence.
+// TODO: this will need to pull the origSeq instead, no more edit scripts
 func (cseq CompressedSeq) Decompress(coarse *CoarseDB) (OriginalSeq, error) {
 	residues := make([]byte, 0, 20)
 	for _, lk := range cseq.Links {
@@ -231,17 +228,7 @@ func (cseq CompressedSeq) Decompress(coarse *CoarseDB) (OriginalSeq, error) {
 					"because a link refers to an invalid coarse sequence "+
 					"id: %d.", cseq.Id, lk.CoarseSeqId)
 		}
-		editScript, err := NewEditScriptParse(lk.Diff)
-		if err != nil {
-			return OriginalSeq{}, err
-		}
-
-		coarseSeq, err := coarse.ReadCoarseSeq(int(lk.CoarseSeqId))
-		if err != nil {
-			return OriginalSeq{}, err
-		}
-		subCorres := coarseSeq.Residues[lk.CoarseStart:lk.CoarseEnd]
-		residues = append(residues, editScript.Apply(subCorres)...)
+		residues := lk.OrigSeq
 	}
 	return *NewOriginalSeq(cseq.Id, cseq.Name, residues), nil
 }

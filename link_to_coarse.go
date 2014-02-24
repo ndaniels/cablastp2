@@ -13,16 +13,22 @@ type LinkToCoarse struct {
 	// link precisely. If Diff is empty, then the subsequence of the reference
 	// sequence indicated here is equivalent to the corresponding piece of
 	// the original sequence.
-	Diff                   string
+	// Diff                   string
+	// Diff is no longer used, with the reduced alphabet approach.
+	// Instead, we simply store the original (sub)sequence.
+	Identical              bool
+	OrigSeq                string
 	CoarseSeqId            uint
 	CoarseStart, CoarseEnd uint16
 }
 
 func NewLinkToCoarse(coarseSeqId, coarseStart, coarseEnd uint,
-	alignment [2][]byte) LinkToCoarse {
+	origSeq string) LinkToCoarse {
 
 	return LinkToCoarse{
-		Diff:        NewEditScript(alignment).String(),
+		// Diff:        NewEditScript(alignment).String(),
+		Identical:   false,
+		OrigSeq:     origSeq,
 		CoarseSeqId: coarseSeqId,
 		CoarseStart: uint16(coarseStart),
 		CoarseEnd:   uint16(coarseEnd),
@@ -33,7 +39,9 @@ func NewLinkToCoarseNoDiff(
 	coarseSeqId, coarseStart, coarseEnd uint) LinkToCoarse {
 
 	return LinkToCoarse{
-		Diff:        "",
+		// Diff:        "",
+		Identical:   true,
+		OrigSeq:     "",
 		CoarseSeqId: coarseSeqId,
 		CoarseStart: uint16(coarseStart),
 		CoarseEnd:   uint16(coarseEnd),
@@ -43,5 +51,5 @@ func NewLinkToCoarseNoDiff(
 func (lk LinkToCoarse) String() string {
 	return fmt.Sprintf(
 		"reference sequence id: %d, reference range: (%d, %d)\n%s",
-		lk.CoarseSeqId, lk.CoarseStart, lk.CoarseEnd, lk.Diff)
+		lk.CoarseSeqId, lk.CoarseStart, lk.CoarseEnd, lk.OrigSeq)
 }

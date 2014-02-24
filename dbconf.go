@@ -1,12 +1,11 @@
 package cablastp
 
 import (
-	"encoding/csv"
 	"flag"
 	"fmt"
 	"io"
-	"strconv"
-	"strings"
+
+	"github.com/BurntSushi/toml"
 )
 
 type DBConf struct {
@@ -52,77 +51,9 @@ func LoadDBConf(r io.Reader) (conf *DBConf, err error) {
 		}
 	}()
 	conf = DefaultDBConf
-	csvReader := csv.NewReader(r)
-	csvReader.Comma = ':'
-	csvReader.Comment = '#'
-	csvReader.FieldsPerRecord = 2
-	csvReader.TrailingComma = false
-	csvReader.TrimLeadingSpace = true
 
-	lines, err := csvReader.ReadAll()
-	if err != nil {
+	if _, err := toml.DecodeReader(r, &conf); err != nil {
 		return nil, err
-	}
-
-	for _, line := range lines {
-		atoi := func() int {
-			var i64 int64
-			var err error
-			if i64, err = strconv.ParseInt(line[1], 10, 32); err != nil {
-				panic(err)
-			}
-			return int(i64)
-		}
-		atoui := func() uint64 {
-			var ui64 uint64
-			var err error
-			if ui64, err = strconv.ParseUint(line[1], 10, 64); err != nil {
-				panic(err)
-			}
-			return uint64(ui64)
-		}
-		switch line[0] {
-		case "MinMatchLen":
-			conf.MinMatchLen = atoi()
-		case "MatchKmerSize":
-			conf.MatchKmerSize = atoi()
-		case "GappedWindowSize":
-			conf.GappedWindowSize = atoi()
-		case "UngappedWindowSize":
-			conf.UngappedWindowSize = atoi()
-		case "ExtSeqIdThreshold":
-			conf.ExtSeqIdThreshold = atoi()
-		case "MatchSeqIdThreshold":
-			conf.MatchSeqIdThreshold = atoi()
-		case "MatchExtend":
-			conf.MatchExtend = atoi()
-		case "MapSeedSize":
-			conf.MapSeedSize = atoi()
-		case "ExtSeedSize":
-			conf.ExtSeedSize = atoi()
-		case "LowComplexity":
-			conf.LowComplexity = atoi()
-		case "SeedLowComplexity":
-			conf.SeedLowComplexity = atoi()
-		case "SavePlain":
-			if strings.TrimSpace(line[1]) == "1" {
-				conf.SavePlain = true
-			} else {
-				conf.SavePlain = false
-			}
-		case "ReadOnly":
-			if strings.TrimSpace(line[1]) == "1" {
-				conf.ReadOnly = true
-			} else {
-				conf.ReadOnly = false
-			}
-		case "BlastMakeBlastDB":
-			conf.BlastMakeBlastDB = strings.TrimSpace(line[1])
-		case "BlastDBSize":
-			conf.BlastDBSize = atoui()
-		default:
-			return nil, fmt.Errorf("Invalid DBConf flag: %s", line[0])
-		}
 	}
 
 	return conf, nil
@@ -187,40 +118,8 @@ func (flagConf *DBConf) FlagMerge(fileConf *DBConf) (*DBConf, error) {
 }
 
 func (dbConf DBConf) Write(w io.Writer) error {
-	csvWriter := csv.NewWriter(w)
-	csvWriter.Comma = ':'
-	csvWriter.UseCRLF = false
-
-	s := func(i int) string {
-		return fmt.Sprintf("%d", i)
-	}
-	su := func(i uint64) string {
-		return fmt.Sprintf("%d", i)
-	}
-	bs := func(b bool) string {
-		if b {
-			return "1"
-		}
-		return "0"
-	}
-	records := [][]string{
-		{"MinMatchLen", s(dbConf.MinMatchLen)},
-		{"MatchKmerSize", s(dbConf.MatchKmerSize)},
-		{"GappedWindowSize", s(dbConf.GappedWindowSize)},
-		{"UngappedWindowSize", s(dbConf.UngappedWindowSize)},
-		{"ExtSeqIdThreshold", s(dbConf.ExtSeqIdThreshold)},
-		{"MatchSeqIdThreshold", s(dbConf.MatchSeqIdThreshold)},
-		{"MatchExtend", s(dbConf.MatchExtend)},
-		{"MapSeedSize", s(dbConf.MapSeedSize)},
-		{"ExtSeedSize", s(dbConf.ExtSeedSize)},
-		{"LowComplexity", s(dbConf.LowComplexity)},
-		{"SeedLowComplexity", s(dbConf.SeedLowComplexity)},
-		{"SavePlain", bs(dbConf.SavePlain)},
-		{"ReadOnly", bs(dbConf.ReadOnly)},
-		{"BlastMakeBlastDB", dbConf.BlastMakeBlastDB},
-		{"BlastDBSize", su(dbConf.BlastDBSize)},
-	}
-	if err := csvWriter.WriteAll(records); err != nil {
+	encoder := toml.NewEncoder(w)
+	if err := encoder.Encode(dbConf); err != nil {
 		return err
 	}
 	return nil

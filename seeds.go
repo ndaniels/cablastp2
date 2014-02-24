@@ -4,8 +4,8 @@ import (
 	"log"
 	"strings"
 	"sync"
-
-	"github.com/BurntSushi/cablastp/blosum"
+	// "github.com/ndaniels/cablastp2/blosum"
+	"blosum"
 )
 
 // SeedAlphaNums is a map to assign *valid* amino acid resiudes contiunous
@@ -13,7 +13,7 @@ import (
 // N = SeedAlphaSize.)
 // Invalid amino acid resiudes map to -1 and will produce a panic.
 var (
-	SeedAlphaSize        = len(4) // skip k-mers containing 'N'
+	SeedAlphaSize        = 4 // skip k-mers containing 'N'
 	SeedAlphaNums        = make([]int, 4)
 	ReverseSeedAlphaNums = make([]byte, 4)
 )
@@ -21,15 +21,15 @@ var (
 // Populate SeedAlphaNums and ReverseSeedAlphaNums using the BLOSUM62
 // alphabet data.
 func init() {
-	var amino byte
+	var base byte
 
-	aminoVal := 0
+	baseVal := 0
 	for i := byte(0); i < 26; i++ {
-		amino = 'A' + i
-		if strings.ContainsRune(blosum.Alphabet62, rune(amino)) {
-			SeedAlphaNums[i] = aminoVal
-			ReverseSeedAlphaNums[aminoVal] = amino
-			aminoVal += 1
+		base = 'A' + i
+		if strings.ContainsRune(blosum.AlphabetDNA, rune(base)) {
+			SeedAlphaNums[i] = baseVal
+			ReverseSeedAlphaNums[baseVal] = base
+			baseVal += 1
 		} else {
 			SeedAlphaNums[i] = -1
 		}
@@ -140,13 +140,15 @@ func (ss *Seeds) Add(coarseSeqIndex int, corSeq *CoarseSeq) {
 	ss.lock.Lock()
 	// Don't use defer. It comes with a performance penalty in hot spots.
 
+  // possibly increment by ss.SeedSize instead, like in cablast-compress
 	for i := 0; i < corSeq.Len()-ss.SeedSize; i++ {
-    
+
 		kmer := corSeq.Residues[i : i+ss.SeedSize]
-    if bytes.IndexByte(kmer, 'N') > -1 {
-      continue
-    }
-    
+    // skip wildcard-containing kmers
+		if bytes.IndexByte(kmer, 'N') > -1 {
+			continue
+		}
+
 		if IsLowComplexity(corSeq.Residues, i, ss.lowComplexityWindow) {
 			continue
 		}

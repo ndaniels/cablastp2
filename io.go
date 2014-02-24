@@ -2,7 +2,7 @@ package cablastp
 
 import (
 	"bytes"
-	"compress/gzip"
+	// "compress/gzip"
 	"encoding/binary"
 	"encoding/csv"
 	"fmt"
@@ -68,124 +68,6 @@ func (coarsedb *CoarseDB) saveFasta() (err error) {
 
 	Vprintf("Done writing %s (%s).\n", FileCoarseFasta, time.Since(timer))
 	Vprintf("Done writing %s (%s).\n", FileCoarseFastaIndex, time.Since(timer))
-	return nil
-}
-
-func (coarsedb *CoarseDB) readSeeds() error {
-	Vprintf("\t\tReading %s... (this could take a while)\n", FileCoarseSeeds)
-	timer := time.Now()
-
-	gr, err := gzip.NewReader(coarsedb.FileSeeds)
-	if err != nil {
-		return fmt.Errorf("Could not create gzip reader: %s", err)
-	}
-
-	var hash, cnt, seqInd uint32
-	var resInd uint16
-	for {
-		if err = binary.Read(gr, binary.BigEndian, &hash); err != nil {
-			break
-		}
-		if err = binary.Read(gr, binary.BigEndian, &cnt); err != nil {
-			return fmt.Errorf("Could not read seed count: %s", err)
-		}
-		for i := uint32(0); i < cnt; i++ {
-			if err = binary.Read(gr, binary.BigEndian, &seqInd); err != nil {
-				return fmt.Errorf("Could not read seed sequence index: %s", err)
-			}
-			if err = binary.Read(gr, binary.BigEndian, &resInd); err != nil {
-				return fmt.Errorf("Could not read seed residue index: %s", err)
-			}
-
-			sl := NewSeedLoc(seqInd, resInd)
-			if coarsedb.Seeds.Locs[hash] == nil {
-				coarsedb.Seeds.Locs[hash] = sl
-			} else {
-				lk := coarsedb.Seeds.Locs[hash]
-				for ; lk.Next != nil; lk = lk.Next {
-				}
-				lk.Next = sl
-			}
-		}
-	}
-	if err := gr.Close(); err != nil {
-		return fmt.Errorf("Could not close gzip reader: %s", err)
-	}
-
-	Vprintf("\t\tDone reading %s (%s).\n", FileCoarseSeeds, time.Since(timer))
-	return nil
-}
-
-func (coarsedb *CoarseDB) saveSeeds() error {
-	var i int32
-
-	Vprintf("Writing %s... (this could take a while)\n", FileCoarseSeeds)
-	timer := time.Now()
-
-	gzipWriter, err := gzip.NewWriterLevel(coarsedb.FileSeeds, gzip.BestSpeed)
-	if err != nil {
-		return err
-	}
-	for i = 0; i < int32(coarsedb.Seeds.powers[coarsedb.Seeds.SeedSize]); i++ {
-		if coarsedb.Seeds.Locs[i] == nil {
-			continue
-		}
-
-		if err := binary.Write(gzipWriter, binary.BigEndian, i); err != nil {
-			return err
-		}
-
-		cnt := int32(0)
-		for loc := coarsedb.Seeds.Locs[i]; loc != nil; loc = loc.Next {
-			cnt++
-		}
-		if err := binary.Write(gzipWriter, binary.BigEndian, cnt); err != nil {
-			return err
-		}
-		for loc := coarsedb.Seeds.Locs[i]; loc != nil; loc = loc.Next {
-			err = binary.Write(gzipWriter, binary.BigEndian, loc.SeqInd)
-			if err != nil {
-				return err
-			}
-			err = binary.Write(gzipWriter, binary.BigEndian, loc.ResInd)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	if err := gzipWriter.Close(); err != nil {
-		return err
-	}
-
-	Vprintf("Done writing %s (%s).\n", FileCoarseSeeds, time.Since(timer))
-	return nil
-}
-
-func (coarsedb *CoarseDB) saveSeedsPlain() error {
-	Vprintf("Writing %s...\n", FileCoarsePlainSeeds)
-	timer := time.Now()
-
-	csvWriter := csv.NewWriter(coarsedb.plainSeeds)
-	record := make([]string, 0, 10)
-	for i := 0; i < coarsedb.Seeds.powers[coarsedb.Seeds.SeedSize]; i++ {
-		if coarsedb.Seeds.Locs[i] == nil {
-			continue
-		}
-
-		record = record[:0]
-		record = append(record, string(coarsedb.Seeds.unhashKmer(i)))
-		for loc := coarsedb.Seeds.Locs[i]; loc != nil; loc = loc.Next {
-			record = append(record,
-				fmt.Sprintf("%d", loc.SeqInd),
-				fmt.Sprintf("%d", loc.ResInd))
-		}
-		if err := csvWriter.Write(record); err != nil {
-			return err
-		}
-	}
-	csvWriter.Flush()
-
-	Vprintf("Done writing %s (%s).\n", FileCoarsePlainSeeds, time.Since(timer))
 	return nil
 }
 
@@ -379,7 +261,6 @@ func readCompressedSeq(id int, record []string) (CompressedSeq, error) {
 		}
 		lk := NewLinkToCoarseNoDiff(
 			uint(coarseSeqId64), uint(coarseStart64), uint(coarseEnd64))
-		lk.Diff = string([]byte(record[i+3]))
 
 		cseq.Add(lk)
 	}
@@ -467,7 +348,7 @@ func (comdb *CompressedDB) writer() {
 					fmt.Sprintf("%d", link.CoarseSeqId),
 					fmt.Sprintf("%d", link.CoarseStart),
 					fmt.Sprintf("%d", link.CoarseEnd),
-					link.Diff)
+					link.OrigSeq)
 			}
 
 			// Write the record to our *buffer* and flush it.

@@ -65,9 +65,8 @@ type CoarseDB struct {
 	plainSeeds *os.File
 }
 
-// newWriteCoarseDB sets up a new coarse database to be written to (or opens
-// an existing one ready for writing when 'appnd' is set).
-func newWriteCoarseDB(appnd bool, db *DB) (*CoarseDB, error) {
+// newWriteCoarseDB sets up a new coarse database to be written to.
+func newWriteCoarseDB(db *DB) (*CoarseDB, error) {
 	var err error
 
 	Vprintln("\tOpening coarse database...")
@@ -87,23 +86,23 @@ func newWriteCoarseDB(appnd bool, db *DB) (*CoarseDB, error) {
 		plain:          db.SavePlain,
 		plainSeeds:     nil,
 	}
-	coarsedb.FileFasta, err = db.openWriteFile(appnd, FileCoarseFasta)
+	coarsedb.FileFasta, err = db.openWriteFile(FileCoarseFasta)
 	if err != nil {
 		return nil, err
 	}
-	coarsedb.FileFastaIndex, err = db.openWriteFile(appnd, FileCoarseFastaIndex)
+	coarsedb.FileFastaIndex, err = db.openWriteFile(FileCoarseFastaIndex)
 	if err != nil {
 		return nil, err
 	}
-	coarsedb.FileSeeds, err = db.openWriteFile(appnd, FileCoarseSeeds)
+	coarsedb.FileSeeds, err = db.openWriteFile(FileCoarseSeeds)
 	if err != nil {
 		return nil, err
 	}
-	coarsedb.FileLinks, err = db.openWriteFile(appnd, FileCoarseLinks)
+	coarsedb.FileLinks, err = db.openWriteFile(FileCoarseLinks)
 	if err != nil {
 		return nil, err
 	}
-	coarsedb.FileLinksIndex, err = db.openWriteFile(appnd, FileCoarseLinksIndex)
+	coarsedb.FileLinksIndex, err = db.openWriteFile(FileCoarseLinksIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -115,52 +114,13 @@ func newWriteCoarseDB(appnd bool, db *DB) (*CoarseDB, error) {
 	coarsedb.fastaIndexSize = info.Size()
 
 	if coarsedb.plain {
-		coarsedb.plainLinks, err = db.openWriteFile(appnd, FileCoarsePlainLinks)
+		coarsedb.plainLinks, err = db.openWriteFile(FileCoarsePlainLinks)
 		if err != nil {
 			return nil, err
 		}
-		coarsedb.plainSeeds, err = db.openWriteFile(appnd, FileCoarsePlainSeeds)
+		coarsedb.plainSeeds, err = db.openWriteFile(FileCoarsePlainSeeds)
 		if err != nil {
 			return nil, err
-		}
-	}
-
-	if appnd {
-		if err = coarsedb.load(); err != nil {
-			return nil, err
-		}
-
-		// After we've loaded the coarse database, the file offset should be
-		// at the end of each file. For the coarse fasta file, this is
-		// exactly what we want. But for the links and seeds files, we need
-		// to clear the file and start over (since they are not amenable to
-		// appending like the coarse fasta file is).
-		// Do the same for plain files.
-		trunc := func(f *os.File) (err error) {
-			if err = f.Truncate(0); err != nil {
-				return
-			}
-			if _, err = f.Seek(0, os.SEEK_SET); err != nil {
-				return
-			}
-			return nil
-		}
-		if err = trunc(coarsedb.FileSeeds); err != nil {
-			return nil, err
-		}
-		if err = trunc(coarsedb.FileLinks); err != nil {
-			return nil, err
-		}
-		if err = trunc(coarsedb.FileLinksIndex); err != nil {
-			return nil, err
-		}
-		if coarsedb.plain {
-			if err = trunc(coarsedb.plainSeeds); err != nil {
-				return nil, err
-			}
-			if err = trunc(coarsedb.plainLinks); err != nil {
-				return nil, err
-			}
 		}
 	}
 
@@ -416,29 +376,8 @@ func (coarsedb *CoarseDB) writeClose() {
 	}
 }
 
-// load reads the entire coarse database (sequences and links) into memory.
-// If the database is being appended to, the seeds table is also read into
-// memory.
-//
-// (This is only called when a coarse database is being appended to.)
-func (coarsedb *CoarseDB) load() (err error) {
-	if err = coarsedb.readFasta(); err != nil {
-		return
-	}
-	if err = coarsedb.readLinks(); err != nil {
-		return
-	}
-	if coarsedb.FileSeeds != nil {
-		if err = coarsedb.readSeeds(); err != nil {
-			return
-		}
-	}
-	return nil
-}
-
 // save will save the coarse database as a FASTA file and a binary
-// encoding of all coarse links. Seeds are also saved if this is not a read
-// only database.
+// encoding of all coarse links.
 func (coarsedb *CoarseDB) save() error {
 	coarsedb.seqLock.RLock()
 	defer coarsedb.seqLock.RUnlock()
@@ -462,15 +401,6 @@ func (coarsedb *CoarseDB) save() error {
 		wg.Done()
 	}()
 
-	if !coarsedb.readOnly {
-		wg.Add(1)
-		go func() {
-			if err := coarsedb.saveSeeds(); err != nil {
-				errc <- err
-			}
-			wg.Done()
-		}()
-	}
 	if coarsedb.plain {
 		wg.Add(1)
 		go func() {
@@ -479,15 +409,6 @@ func (coarsedb *CoarseDB) save() error {
 			}
 			wg.Done()
 		}()
-		if !coarsedb.readOnly {
-			wg.Add(1)
-			go func() {
-				if err := coarsedb.saveSeedsPlain(); err != nil {
-					errc <- err
-				}
-				wg.Done()
-			}()
-		}
 	}
 	wg.Wait()
 
