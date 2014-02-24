@@ -216,9 +216,8 @@ func (cseq *CompressedSeq) Add(link LinkToCoarse) {
 }
 
 // Decompress decompresses a particular compressed sequence using the given
-// coarse sequence. Namely, all of the links are followed and all of the
-// edit scripts are "applied" to recover the original sequence.
-// TODO: this will need to pull the origSeq instead, no more edit scripts
+// coarse sequence. Namely, all of the links are followed and all of the original
+// subsequences are appended.
 func (cseq CompressedSeq) Decompress(coarse *CoarseDB) (OriginalSeq, error) {
 	residues := make([]byte, 0, 20)
 	for _, lk := range cseq.Links {
@@ -228,7 +227,19 @@ func (cseq CompressedSeq) Decompress(coarse *CoarseDB) (OriginalSeq, error) {
 					"because a link refers to an invalid coarse sequence "+
 					"id: %d.", cseq.Id, lk.CoarseSeqId)
 		}
-		residues := lk.OrigSeq
+		
+		if len(lk.OrigSeq) == 0 {
+			residues = append(residues, lk.OrigSeq...)
+		} else {
+			coarseSeq, err := coarse.ReadCoarseSeq(int(lk.CoarseSeqId))
+			if err != nil {
+				return OriginalSeq{}, err
+			}
+			subCorres := coarseSeq.Residues[lk.CoarseStart:lk.CoarseEnd]
+			residues = append(residues, subCorres...)
+		}
+		
+		residues = append(residues, lk.OrigSeq...)
 	}
 	return *NewOriginalSeq(cseq.Id, cseq.Name, residues), nil
 }

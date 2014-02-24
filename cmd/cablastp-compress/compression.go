@@ -240,7 +240,7 @@ func compress(db *cablastp.DB, orgSeqId int,
 			// serves as a bridge to expand coarse sequences into their
 			// original sequences.
 			cseq.Add(cablastp.NewLinkToCoarse(
-				uint(corSeqId), uint(corStart), uint(corEnd), orgSeq.Residues))
+				uint(corSeqId), uint(corStart), uint(corEnd), orgMatch))
 			corSeq.AddLink(cablastp.NewLinkToCompressed(
 				uint32(orgSeqId), uint16(corStart), uint16(corEnd)))
 
