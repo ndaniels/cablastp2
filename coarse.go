@@ -23,6 +23,7 @@ const (
 // compressed database, are used to re-create the original sequences.
 type CoarseDB struct {
 	Seqs  []*CoarseSeq
+	ReducedSeqs  []*CoarseSeq
 	Seeds Seeds
 
 	// The fastaCache is used during decompression. Namely, once a coarse
@@ -73,6 +74,7 @@ func newWriteCoarseDB(db *DB) (*CoarseDB, error) {
 
 	coarsedb := &CoarseDB{
 		Seqs:           make([]*CoarseSeq, 0, 10000000),
+		ReducedSeqs:    make([]*CoarseSeq, 0, 10000000),
 		seqsRead:       0,
 		Seeds:          NewSeeds(db.MapSeedSize, db.SeedLowComplexity),
 		FileFasta:      nil,
@@ -137,6 +139,7 @@ func newReadCoarseDB(db *DB) (*CoarseDB, error) {
 
 	coarsedb := &CoarseDB{
 		Seqs:           make([]*CoarseSeq, 0, 100000),
+		ReducedSeqs:    make([]*CoarseSeq, 0, 100000),
 		Seeds:          NewSeeds(db.MapSeedSize, db.SeedLowComplexity),
 		FileFasta:      nil,
 		fastaCache:     make(map[int]*CoarseSeq, 200),

@@ -79,7 +79,8 @@ func (pool *compressPool) done() {
 }
 
 // TODO: need to pass around a pair of nativeSeq and reducedSeq
-// What gets saved to disk is nativeSeq
+// What gets saved to compressed db is nativeSeq
+// What gets saved to coarse fasta is reducedSeq
 
 // compress will convert an original sequence into a compressed sequence.
 // The process involves finding commonality in the original sequence with
@@ -97,8 +98,7 @@ func compress(db *cablastp.DB, orgSeqId int,
 	var cseqExt, oseqExt []byte
 	
 	// redSeq will hold the reduced-alphabet sequence
-	var redSeq []byte
-	redSeq := reduce(orgSeq.Residues)
+	redSeq := cablastp.NewReducedSeq(orgSeq)
 
 	// Start the creation of a compressed sequence.
 	cseq := cablastp.NewCompressedSeq(orgSeqId, orgSeq.Name)

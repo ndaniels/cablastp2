@@ -105,7 +105,7 @@ func (seq *sequence) newSubSequence(start, end uint) *sequence {
 		panic(fmt.Sprintf("Invalid sub sequence (%d, %d) for sequence "+
 			"with length %d.", start, end, seq.Len()))
 	}
-	s := newSeq(seq.Id, seq.Name, reduce(seq.Residues[start:end]))
+	s := newSeq(seq.Id, seq.Name, seq.Residues[start:end])
 	s.Offset += start
 	return s
 }
@@ -198,4 +198,21 @@ func NewFastaOriginalSeq(id int, s seq.Sequence) *OriginalSeq {
 
 func (oseq *OriginalSeq) NewSubSequence(start, end uint) *OriginalSeq {
 	return &OriginalSeq{oseq.sequence.newSubSequence(start, end)}
+}
+
+// ReducedSeq embeds a sequence and serves as a typing mechanism to
+// distguish reduced-alphabet (DNA) sequences from amino acid sequences.
+type ReducedSeq struct {
+	*sequence
+}
+
+// 
+func NewReducedSeq(oseq *OriginalSeq) *ReducedSeq {
+	return &ReducedSeq{sequence: newSeq(oseq.sequence.Id, 
+		                                oseq.sequence.Name, 
+										Reduce(oseq.sequence.Residues))}
+}
+
+func (rseq *ReducedSeq) NewSubSequence(start, end uint) *ReducedSeq {
+	return &ReducedSeq{rseq.sequence.newSubSequence(start, end)}
 }
