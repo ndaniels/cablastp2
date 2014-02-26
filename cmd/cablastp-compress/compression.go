@@ -227,7 +227,7 @@ func compress(db *cablastp.DB, orgSeqId int,
           uint(lastMatch), uint(current))
         orgSub := orgSeq.NewSubSequence(
           uint(lastMatch), uint(current))
-        addWithoutMatch(&cseq, coarsedb, orgSeqId, redSub, orgSub)
+        addWithoutMatch(&cseq, coarsedb, orgSeqId, orgSub, redSub)
       }
 
       // For the given match, add a LinkToCoarse to the portion of
@@ -259,7 +259,8 @@ func compress(db *cablastp.DB, orgSeqId int,
   // create the appropriate links.
   if orgSeq.Len()-lastMatch > 0 {
     orgSub := orgSeq.NewSubSequence(uint(lastMatch), uint(orgSeq.Len()))
-    addWithoutMatch(&cseq, coarsedb, orgSeqId, orgSub)
+    redSub := redSeq.NewSubSequence(uint(lastMatch), uint(redSeq.Len()))
+    addWithoutMatch(&cseq, coarsedb, orgSeqId, orgSub, redSub)
   }
 
   return cseq
