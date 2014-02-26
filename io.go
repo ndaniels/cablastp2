@@ -259,8 +259,9 @@ func readCompressedSeq(id int, record []string) (CompressedSeq, error) {
 		if err != nil {
 			return CompressedSeq{}, nil
 		}
-		lk := NewLinkToCoarseNoDiff(
-			uint(coarseSeqId64), uint(coarseStart64), uint(coarseEnd64))
+    origSeq := string([]byte(record[i+3]))
+		lk := NewLinkToCoarse(
+			uint(coarseSeqId64), uint(coarseStart64), uint(coarseEnd64), origSeq)
 
 		cseq.Add(lk)
 	}
