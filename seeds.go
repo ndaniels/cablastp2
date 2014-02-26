@@ -15,8 +15,8 @@ import (
 // Invalid amino acid resiudes map to -1 and will produce a panic.
 var (
 	SeedAlphaSize        = 4 // skip k-mers containing 'N'
-	SeedAlphaNums        = make([]int, 4)
-	ReverseSeedAlphaNums = make([]byte, 4)
+	SeedAlphaNums        = make([]int, 26)
+	ReverseSeedAlphaNums = make([]byte, 26)
 )
 
 // Populate SeedAlphaNums and ReverseSeedAlphaNums using the BLOSUM62
@@ -25,7 +25,7 @@ func init() {
 	var base byte
 
 	baseVal := 0
-	for i := byte(0); i < 26; i++ {
+	for i := byte(0); i < len(blosum.Alphabet62); i++ {
 		base = 'A' + i
 		if strings.ContainsRune(blosum.AlphabetDNA, rune(base)) {
 			SeedAlphaNums[i] = baseVal
