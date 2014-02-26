@@ -6,7 +6,6 @@ import (
 	"sync"
 	"bytes"
 
-	"github.com/ndaniels/cablastp2/blosum"
 )
 
 // SeedAlphaNums is a map to assign *valid* amino acid resiudes contiunous
