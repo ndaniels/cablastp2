@@ -117,7 +117,7 @@ func compress(db *cablastp.DB, orgSeqId int,
 
   // Iterate through the original sequence a 'kmer' at a time.
   for current = 0; current < olen-mapSeedSize-extSeedSize; current++ {
-    kmer := redSeq[current : current+mapSeedSize]
+    kmer := redSeq.Residues[current : current+mapSeedSize]
     seeds := coarsedb.Seeds.Lookup(kmer, &mem.seeds)
 
     // skip wildcard-containing kmers
@@ -225,7 +225,9 @@ func compress(db *cablastp.DB, orgSeqId int,
       if orgStart-lastMatch > 0 {
         redSub := redSeq.NewSubSequence(
           uint(lastMatch), uint(current))
-        addWithoutMatch(&cseq, coarsedb, orgSeqId, redSub)
+        orgSub := orgSeq.NewSubSequence(
+          uint(lastMatch), uint(current))
+        addWithoutMatch(&cseq, coarsedb, orgSeqId, redSub, orgSub)
       }
 
       // For the given match, add a LinkToCoarse to the portion of
@@ -392,7 +394,7 @@ func addWithoutMatch(cseq *cablastp.CompressedSeq,
     cablastp.NewLinkToCompressed(uint32(orgSeqId), 0, uint16(len(redSubCpy))))
 
   cseq.Add(
-    cablastp.NewLinkToCoarse(uint(corSeqId), 0, uint(len(subCpy)),
+    cablastp.NewLinkToCoarse(uint(corSeqId), 0, uint(len(redSubCpy)),
       string(orgSub.Residues)))
 }
 

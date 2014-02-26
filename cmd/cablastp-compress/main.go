@@ -161,7 +161,7 @@ func main() {
 
 	// Create a new database for writing. If we're appending, we load
 	// the coarse database into memory, and setup the database for writing.
-	db, err := cablastp.NewWriteDB(flagAppend, dbConf, flag.Arg(0))
+	db, err := cablastp.NewWriteDB(dbConf, flag.Arg(0))
 	if err != nil {
 		fatalf("%s\n", err)
 	}
