@@ -17,7 +17,7 @@ func reduce1(char byte) byte {
 }
 
 func Reduce(seq []byte) []byte {
-	dest := make([]byte, 0, len(seq))
+	dest := make([]byte, len(seq))
 	for i, residue := range seq {
 		dest[i] = reduce1(residue)
 	}
