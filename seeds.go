@@ -27,7 +27,7 @@ func init() {
 	baseVal := 0
 	for i := byte(0); i < 26; i++ {
 		base = 'A' + i
-		if strings.ContainsRune(blosum.AlphabetDNA, rune(base)) {
+		if strings.ContainsRune("ACGT", rune(base)) {
 			SeedAlphaNums[i] = baseVal
 			ReverseSeedAlphaNums[baseVal] = base
 			baseVal += 1
