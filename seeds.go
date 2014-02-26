@@ -25,7 +25,7 @@ func init() {
 	var base byte
 
 	baseVal := 0
-	for i := byte(0); i < len(blosum.Alphabet62); i++ {
+	for i := byte(0); i < byte(len(blosum.Alphabet62)); i++ {
 		base = 'A' + i
 		if strings.ContainsRune(blosum.AlphabetDNA, rune(base)) {
 			SeedAlphaNums[i] = baseVal
