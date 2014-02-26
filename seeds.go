@@ -85,8 +85,8 @@ type Seeds struct {
 
 // NewSeeds creates a new table of seed location lists. The table is
 // initialized with enough memory to hold lists for all possible K-mers.
-// Namely, the length of seeds is equivalent to 20^(K) where 20 is the number
-// of amino acids (size of alphabet) and K is equivalent to the length of
+// Namely, the length of seeds is equivalent to 4^(K) where 4 is the
+// size of the reduced alphabet and K is equivalent to the length of
 // each K-mer.
 func NewSeeds(seedSize, lowComplexityWindow int) Seeds {
 	powers := make([]int, seedSize+1)
