@@ -5,7 +5,7 @@ import (
   "runtime"
   "sync"
 
-  "github.com/BurntSushi/cablastp"
+  "github.com/ndaniels/cablastp2"
 )
 
 // compressPool represents a pool of workers where each worker is responsible

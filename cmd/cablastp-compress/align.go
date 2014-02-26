@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/BurntSushi/cablastp"
+	"github.com/ndaniels/cablastp2"
 )
 
 // alignLen computes the length of a sequence in an alignment.

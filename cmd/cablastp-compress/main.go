@@ -11,7 +11,7 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/BurntSushi/cablastp"
+	"github.com/ndaniels/cablastp2"
 )
 
 // makeblastdb -dbtype prot -input_type fasta

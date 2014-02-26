@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/BurntSushi/cablastp"
+	"github.com/ndaniels/cablastp2"
 )
 
 func TestSkipLowComplexity(t *testing.T) {

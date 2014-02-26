@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/BurntSushi/cablastp/blosum"
+	"github.com/ndaniels/cablastp2/blosum"
 )
 
 var (
