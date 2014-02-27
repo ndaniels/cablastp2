@@ -116,7 +116,9 @@ func compress(db *cablastp.DB, orgSeqId int,
   lastMatch, current := 0, 0
 
   // Iterate through the original sequence a 'kmer' at a time.
-  for current = 0; current < olen-mapSeedSize-extSeedSize; current++ {
+  skipSize := 1
+  limit := olen-mapSeedSize-extSeedSize-skipSize
+  for current = 0; current <= limit; current += skipSize {
     kmer := redSeq.Residues[current : current+mapSeedSize]
 
     // skip wildcard-containing kmers
