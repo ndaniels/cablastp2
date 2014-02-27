@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 	"bytes"
-
+  "fmt"
 )
 
 // SeedAlphaNums is a map to assign *valid* amino acid resiudes contiunous
