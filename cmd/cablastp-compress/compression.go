@@ -116,7 +116,7 @@ func compress(db *cablastp.DB, orgSeqId int,
   lastMatch, current := 0, 0
 
   // Iterate through the original sequence a 'kmer' at a time.
-  skipSize := 1
+  skipSize := 4
   limit := olen-mapSeedSize-extSeedSize-skipSize
   for current = 0; current <= limit; current += skipSize {
     kmer := redSeq.Residues[current : current+mapSeedSize]
@@ -174,6 +174,8 @@ func compress(db *cablastp.DB, orgSeqId int,
         db.GappedWindowSize, db.UngappedWindowSize,
         db.MatchKmerSize, db.ExtSeqIdThreshold,
         mem)
+        
+      // TODO we should also try to extend BACKWARDS from the seed
 
       // If the part of the original (reduced) sequence does not exceed the
       // minimum match length, then we don't accept the match and move
