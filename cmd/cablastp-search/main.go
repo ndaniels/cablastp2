@@ -32,6 +32,7 @@ var (
 	// Flags that control algorithmic parameters are stored in `dbConf`.
 	flagMakeBlastDB = "makeblastdb"
 	flagBlastp      = "blastp"
+  flagBlastn      = "blastn"
 	flagGoMaxProcs  = runtime.NumCPU()
 	flagQuiet       = false
 	flagCpuProfile  = ""
@@ -52,6 +53,9 @@ func init() {
 	flag.StringVar(&flagBlastp, "blastp",
 		flagBlastp,
 		"The location of the 'blastp' executable.")
+  	flag.StringVar(&flagBlastn, "blastn",
+  		flagBlastn,
+  		"The location of the 'blastn' executable.")
 	flag.Float64Var(&flagCoarseEval, "coarse-eval", flagCoarseEval,
 		"The e-value threshold for the coarse search. This will NOT\n"+
 			"\tbe used on the fine search. The fine search e-value threshold\n"+
@@ -248,7 +252,7 @@ func blastCoarse(
 	db *cablastp.DB, stdin *bytes.Reader, stdout *bytes.Buffer) error {
 
 	cmd := exec.Command(
-		flagBlastp,
+		flagBlastn,
 		"-db", path.Join(db.Path, cablastp.FileBlastCoarse),
 		"-num_threads", s(flagGoMaxProcs),
 		"-outfmt", "5", "-dbsize", su(db.BlastDBSize))
