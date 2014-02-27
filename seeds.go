@@ -179,7 +179,7 @@ func (ss *Seeds) Add(coarseSeqIndex int, corSeq *CoarseSeq) {
 func (ss Seeds) Lookup(kmer []byte, mem *[][2]uint) [][2]uint {
 	ss.lock.RLock()
 	// Don't use defer. It comes with a performance penalty in hot spots.
-  fmt.Println(kmer)
+  fmt.Println(string(kmer)
 	seeds := ss.Locs[ss.hashKmer(kmer)]
 	if seeds == nil {
 		ss.lock.RUnlock()
