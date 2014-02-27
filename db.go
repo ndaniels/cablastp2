@@ -227,9 +227,9 @@ func (db *DB) Save() error {
 	}
 
 	// Now we need to construct a blastp database from the coarse fasta file.
-	// e.g., `makeblastdb -dbtype prot -in coarse.fasta`
+	// e.g., `makeblastdb -dbtype nucl -in coarse.fasta`
 	cmd := exec.Command(
-		db.BlastMakeBlastDB, "-dbtype", "prot",
+		db.BlastMakeBlastDB, "-dbtype", "nucl",
 		"-in", FileCoarseFasta, "-out", FileBlastCoarse)
 	cmd.Dir = db.Path
 

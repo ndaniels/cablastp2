@@ -14,7 +14,7 @@ import (
 	"github.com/ndaniels/cablastp2"
 )
 
-// makeblastdb -dbtype prot -input_type fasta
+// makeblastdb -dbtype nucl -input_type fasta
 
 const interval = 1000
 
