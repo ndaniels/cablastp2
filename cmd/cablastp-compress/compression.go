@@ -169,13 +169,29 @@ func compress(db *cablastp.DB, orgSeqId int,
       // the end of the sequence for the coarse sequence, and the
       // position of the "current" pointer and the end of the sequence
       // for the original sequence.
+      // TODO maybe the simplest way to match backwards is to reverse the
+      // coarse and reduced sequences FROM the last match TO the current,
+      // and call extendMatch on those as well. Reverse the result, and
+      // prepend it to corMatch and redMatch here.
       corMatch, redMatch := extendMatch(
         corSeq.Residues[corResInd:], redSeq.Residues[current:],
         db.GappedWindowSize, db.UngappedWindowSize,
         db.MatchKmerSize, db.ExtSeqIdThreshold,
         mem)
         
-      // TODO we should also try to extend BACKWARDS from the seed
+      // potentially extend this match back as far as the lastMatch (for redSeq)
+      // and beginning of the corSeq
+      backCorMatch, backRedMatch := extendMatch(
+        reverse(corSeq.Residues[0:corResInd]), 
+        reverse(redSeq.Residues[lastMatch:current]),
+        db.GappedWindowSize, db.UngappedWindowSize,
+        db.MatchKmerSize, db.ExtSeqIdThreshold,
+        mem)
+        
+      redMatch = append(reverse(backRedMatch), redMatch...)
+      corMatch = append(reverse(backCorMatch), corMatch...)
+      current -= len(redMatch)
+      corResInd -= len(corMatch)
 
       // If the part of the original (reduced) sequence does not exceed the
       // minimum match length, then we don't accept the match and move
@@ -269,6 +285,15 @@ func compress(db *cablastp.DB, orgSeqId int,
   }
 
   return cseq
+}
+
+func reverse(a []byte) []byte {
+  l := len(a)
+  result := make([]byte, l)
+  for i, v := range a {
+    result[l-i-1] = v
+  }
+  return result
 }
 
 // extendMatch uses a combination of ungapped and gapped extension to find
