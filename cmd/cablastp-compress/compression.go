@@ -197,8 +197,6 @@ func compress(db *cablastp.DB, orgSeqId int,
         
       redMatch = append(reverse(backRedMatch), redMatch...)
       corMatch = append(reverse(backCorMatch), corMatch...)
-      current -= len(backRedMatch)
-      corResInd -= len(backCorMatch)
 
       // If the part of the original (reduced) sequence does not exceed the
       // minimum match length, then we don't accept the match and move
@@ -206,6 +204,10 @@ func compress(db *cablastp.DB, orgSeqId int,
       if len(redMatch) < db.MinMatchLen {
         continue
       }
+      // only change these if we have a long enough match.
+      current -= len(backRedMatch)
+      corResInd -= len(backCorMatch)
+      
 
       // TODO: we don't need to realign here if we are just
       // preserving original sequences.
