@@ -179,6 +179,13 @@ func compress(db *cablastp.DB, orgSeqId int,
         db.MatchKmerSize, db.ExtSeqIdThreshold,
         mem)
         
+        
+      // Don't bother to do a reverse extension if it can't end up long enough
+      
+      if len(redMatch) + current - lastMatch < db.MinMatchLen {
+        continue
+      }
+        
       // potentially extend this match back as far as the lastMatch (for redSeq)
       // and beginning of the corSeq
       backCorMatch, backRedMatch := extendMatch(
@@ -190,8 +197,8 @@ func compress(db *cablastp.DB, orgSeqId int,
         
       redMatch = append(reverse(backRedMatch), redMatch...)
       corMatch = append(reverse(backCorMatch), corMatch...)
-      current -= len(redMatch)
-      corResInd -= len(corMatch)
+      current -= len(backRedMatch)
+      corResInd -= len(backCorMatch)
 
       // If the part of the original (reduced) sequence does not exceed the
       // minimum match length, then we don't accept the match and move
