@@ -118,12 +118,13 @@ func compress(db *cablastp.DB, orgSeqId int,
   // Iterate through the original sequence a 'kmer' at a time.
   for current = 0; current < olen-mapSeedSize-extSeedSize; current++ {
     kmer := redSeq.Residues[current : current+mapSeedSize]
-    seeds := coarsedb.Seeds.Lookup(kmer, &mem.seeds)
 
     // skip wildcard-containing kmers
     if bytes.IndexByte(kmer, 'N') > -1 {
       continue
     }
+
+    seeds := coarsedb.Seeds.Lookup(kmer, &mem.seeds)
 
     // Before trying to extend this with seeds, check to see if there is
     // a low complexity region within `db.MinMatchLen` residues from
