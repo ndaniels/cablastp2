@@ -11,7 +11,7 @@ import (
 
 	"github.com/TuftsBCB/io/fasta"
 
-	"github.com/BurntSushi/cablastp"
+	"github.com/ndaniels/cablastp2"
 )
 
 const interval = 1000
