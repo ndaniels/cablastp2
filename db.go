@@ -159,12 +159,13 @@ func NewReadDB(dir string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-
+  
 	// Now try to load the configuration parameters from the 'params' file.
 	db.DBConf, err = LoadDBConf(db.params)
 	if err != nil {
 		return nil, err
 	}
+  fmt.Println("Got params")
 
 	// Do a sanity check and make sure we can access the `makeblastdb`
 	// and `blastp` executables. Otherwise we might do a lot of work for
@@ -178,6 +179,7 @@ func NewReadDB(dir string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
+  fmt.Println("Read compressed db.")
 	db.CoarseDB, err = newReadCoarseDB(db)
 	if err != nil {
 		return nil, err
