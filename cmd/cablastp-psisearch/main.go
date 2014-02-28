@@ -120,7 +120,7 @@ func main() {
   }
 
   cablastp.Vprintln("\nBlasting query on coarse database...")
-  if err := blastCoarse(db, Reduce(inputFastaQuery), buf); err != nil {
+  if err := blastCoarse(db, cablastp.Reduce(inputFastaQuery), buf); err != nil {
     fatalf("Error blasting coarse database: %s\n", err)
   }
 
