@@ -228,16 +228,16 @@ func (cseq CompressedSeq) Decompress(coarse *CoarseDB) (OriginalSeq, error) {
 					"id: %d.", cseq.Id, lk.CoarseSeqId)
 		}
 		
-		if len(lk.OrigSeq) == 0 {
-			residues = append(residues, lk.OrigSeq...)
-		} else {
-			coarseSeq, err := coarse.ReadCoarseSeq(int(lk.CoarseSeqId))
-			if err != nil {
-				return OriginalSeq{}, err
-			}
-			subCorres := coarseSeq.Residues[lk.CoarseStart:lk.CoarseEnd]
-			residues = append(residues, subCorres...)
-		}
+    // if len(lk.OrigSeq) == 0 {
+    //   residues = append(residues, lk.OrigSeq...)
+    // } else {
+    //   coarseSeq, err := coarse.ReadCoarseSeq(int(lk.CoarseSeqId))
+    //   if err != nil {
+    //     return OriginalSeq{}, err
+    //   }
+    //   subCorres := coarseSeq.Residues[lk.CoarseStart:lk.CoarseEnd]
+    //   residues = append(residues, subCorres...)
+    // }
 		
 		residues = append(residues, lk.OrigSeq...)
 	}
