@@ -5,8 +5,10 @@ import (
 	"io"
 	"os"
 	"strings"
+	"bytes"
 
 	"github.com/TuftsBCB/io/fasta"
+	"github.com/TuftsBCB/seq"
 )
 
 // ReadOriginalSeq is the value sent over `chan ReadOriginalSeq` when a new
@@ -69,3 +71,27 @@ func ReadOriginalSeqs(
 	}()
 	return seqChan, nil
 }
+
+func ReduceQuerySeqs(
+	query *bytes.Reader) (*bytes.Reader, error) {
+		buf := new(bytes.Buffer)
+		f := fasta.NewWriter(buf)
+		reader := fasta.NewReader(query)
+		for i := 0; true; i++ {
+			sequence, err := reader.Read()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return nil, err
+			}
+			rs := Reduce(sequence.Bytes())
+			n := sequence.Name
+
+			result := seq.NewSequenceString(n, rs)
+			f.Write(result)
+		}
+		
+		
+		return bytes.NewReader(buf.Bytes()), nil
+	}

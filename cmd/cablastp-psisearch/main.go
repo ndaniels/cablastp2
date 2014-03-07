@@ -258,11 +258,16 @@ func blastCoarse(
   flags := []string{"-db", path.Join(db.Path, cablastp.FileBlastCoarse),
     "-outfmt", "5",
     "-dbsize", su(db.BlastDBSize)}
-
+  
   cmd := exec.Command(flagBlastn, flags...)
   cmd.Stdin = stdin
   cmd.Stdout = stdout
   return cablastp.Exec(cmd)
+}
+
+func reduceQuery(query *bytes.Reader) *bytes.Reader {
+	
+	return
 }
 
 func getInputFasta() (*bytes.Reader, error) {
