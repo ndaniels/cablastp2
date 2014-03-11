@@ -88,7 +88,7 @@ func ReduceQuerySeqs(
 			rs := Reduce(sequence.Bytes())
 			n := sequence.Name
 
-			result := seq.NewSequenceString(n, rs)
+			result := seq.NewSequenceString(n, string(rs))
 			f.Write(result)
 		}
 		

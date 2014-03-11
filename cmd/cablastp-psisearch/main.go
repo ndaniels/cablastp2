@@ -118,9 +118,14 @@ func main() {
   if err != nil {
     fatalf("Could not open '%s' database: %s\n", flag.Arg(0), err)
   }
+  
+  reducedFasta, err := cablastp.ReduceQuerySeqs(inputFastaQuery)
+  if err != nil {
+    fatalf("Could not reduce alphabet of input query: %s\n", err)
+  }
 
   cablastp.Vprintln("\nBlasting query on coarse database...")
-  if err := blastCoarse(db, inputFastaQuery, buf); err != nil {
+  if err := blastCoarse(db, reducedFasta, buf); err != nil {
     fatalf("Error blasting coarse database: %s\n", err)
   }
 
@@ -263,11 +268,6 @@ func blastCoarse(
   cmd.Stdin = stdin
   cmd.Stdout = stdout
   return cablastp.Exec(cmd)
-}
-
-func reduceQuery(query *bytes.Reader) *bytes.Reader {
-	
-	return
 }
 
 func getInputFasta() (*bytes.Reader, error) {
