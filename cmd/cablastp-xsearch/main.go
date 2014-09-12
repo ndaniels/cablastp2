@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"flag"
 	"fmt"
+  "io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -12,7 +13,7 @@ import (
 	"path"
 	"runtime"
 	"runtime/pprof"
-	"strings"
+  // "strings"
 
 	"github.com/TuftsBCB/io/fasta"
 	"github.com/TuftsBCB/seq"
@@ -34,15 +35,17 @@ var (
 
 	// Flags that affect the operation of search.
 	// Flags that control algorithmic parameters are stored in `dbConf`.
-	flagMakeBlastDB = "makeblastdb"
-	flagBlastp      = "blastp"
-	flagBlastn      = "blastn"
-	flagGoMaxProcs  = runtime.NumCPU()
-	flagQuiet       = false
-	flagCpuProfile  = ""
-	flagMemProfile  = ""
-	flagCoarseEval  = 5.0
-	flagNoCleanup   = false
+	flagMakeBlastDB    = "makeblastdb"
+	flagBlastp         = "blastp"
+	flagBlastn         = "blastn"
+	flagGoMaxProcs     = runtime.NumCPU()
+	flagQuiet          = false
+	flagCpuProfile     = ""
+	flagMemProfile     = ""
+	flagCoarseEval     = 5.0
+	flagNoCleanup      = false
+  flagCompressQuery  = false
+  flagBatchQueries   = false
 )
 
 // blastArgs are all the arguments after "--blast-args".
@@ -93,7 +96,8 @@ func init() {
 }
 
 func main() {
-	buf := new(bytes.Buffer)
+	queryBuf  := new(bytes.Buffer) // might need more than 1 buffer
+  searchBuf := new(bytes.Buffer) // might need more than 1 buffer
 
 	if flag.NArg() != 2 {
 		flag.Usage()
@@ -110,65 +114,70 @@ func main() {
 	}
 
 	db, err := cablastp.NewReadDB(flag.Arg(0))
-	if err != nil {
-		fatalf("Could not open '%s' database: %s\n", flag.Arg(0), err)
-	}
-
+  if err != nil {
+    fatalf("Could not open '%s' database: %s\n", flag.Arg(0), err)
+  }
+  // For query-compression mode, we first run compression on the query file
+  // then coarse-coarse search, decompress both, fine-fine search.
+  // otherwise, just coarse search, decompress results, fine search.
 	// iterate over the query sequences in the input fasta
+  // initially, only implement standard search.
 	
-			buf := new(bytes.Buffer)
-			f := fasta.NewWriter(buf)
-			reader := fasta.NewReader(query)
-			for i := 0; true; i++ {
-				sequence, err := reader.Read()
-				if err == io.EOF {
-					break
-				}
-				if err != nil {
-					return nil, err
-				}
-				origSeq := sequence.Bytes()
-				n := sequence.Name
-				// generate 6 ORFs
-				transSeqs := cablastp.Translate(origSeq)
-				for j, s := range transSeqs {
-					result = seq.NewSequenceString(n, string(Reduce(s)))
-					f.Write(result)
-				}
-				
-				
-			}
+	f := fasta.NewWriter(queryBuf)
+	reader := fasta.NewReader(inputFastaQuery)
+	for i := 0; true; i++ {
+		sequence, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			fatalf("Could not read input fasta query: %s\n", err)
+		}
+		origSeq := sequence.Bytes()
+		n := sequence.Name
+		// generate 6 ORFs
+		transSeqs := cablastp.Translate(origSeq)
+		for _, s := range transSeqs {
+      // reduce each one
+			result := seq.NewSequenceString(n, string(cablastp.Reduce(s)))
+			f.Write(result)
+		}
 		
 		
-			return bytes.NewReader(buf.Bytes()), nil
+	}
+  
+  transQuery := bytes.NewReader(queryBuf.Bytes())
 
-	// for each input query, generate 6 possible translations
+	// now we will read from queryBuf!
+  // I think we create a NewReader from queryBuf?
+  // this now needs to become the replacement for inputFastaQuery
+  // so must use a different buffer for that.
+  // we need a buffer for the query trans/reduce
+  // and a buffer for coarse blast results
 
-	// reduce each one
-
-	// coarse blast on this set of 6 seqs
+	
 
 	cablastp.Vprintln("\nBlasting query on coarse database...")
-	if err := blastCoarse(db, inputFastaQuery, buf); err != nil {
+	if err := blastCoarse(db, transQuery, searchBuf); err != nil {
 		fatalf("Error blasting coarse database: %s\n", err)
 	}
 
 	cablastp.Vprintln("Decompressing blast hits...")
-	expandedSequences, err := expandBlastHits(db, buf)
+	expandedSequences, err := expandBlastHits(db, searchBuf)
 	if err != nil {
 		fatalf("%s\n", err)
 	}
 
 	// Write the contents of the expanded sequences to a fasta file.
 	// It is then indexed using makeblastdb.
-	buf.Reset()
-	if err := writeFasta(expandedSequences, buf); err != nil {
+	searchBuf.Reset()
+	if err := writeFasta(expandedSequences, searchBuf); err != nil {
 		fatalf("Could not create FASTA input from coarse hits: %s\n", err)
 	}
 
 	// Create the fine blast db in a temporary directory
 	cablastp.Vprintln("Building fine BLAST database...")
-	tmpDir, err := makeFineBlastDB(db, buf)
+	tmpDir, err := makeFineBlastDB(db, searchBuf)
 	if err != nil {
 		fatalf("Could not create fine database to search on: %s\n", err)
 	}

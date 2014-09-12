@@ -1,5 +1,6 @@
 package cablastp
 
+
 func reduce1(char byte) byte {
 	switch char {
 	case 'F', 'W', 'Y':

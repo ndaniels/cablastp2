@@ -6,7 +6,6 @@ import (
 	"io"
   // "os"
 	"strings"
-
 	"github.com/TuftsBCB/io/fasta"
 	"github.com/TuftsBCB/seq"
 )
@@ -46,29 +45,30 @@ func Translate(sequence []byte) [][]byte {
 	results := make([][]byte, 0, 6)
 	// three ORFs
 	for orf := 0; orf <= 2; orf++ {
-		// forward direction
-		var codon []byte
 		var result []byte
-		for i := orf; i < (l - 2 - orf); i += 3 {
+    // forward direction
+		for i := orf; i < (l - 2); i += 3 {
+      var codon []byte
 			codon = sequence[i : i+3]
       trans := translate1(codon)
 			if trans == '_' {
-				// stop on stop codons
+				// elide stop codons for now?
 				continue
 			}
 			result = append(result, trans)
 		}
 		results = append(results, result)
     // reverse complement
-		result = make([]byte, 100)
-		for i := (l - 3 + orf); i >= 0; i -= 3 {
+		result = make([]byte, 0)
+		for i := (l - 3 - orf); i >= 0; i -= 3 {
+      codon := make([]byte, 3)
 			rCodon := sequence[i : i+3]
 			codon[0] = complement(rCodon[2])
 			codon[1] = complement(rCodon[1])
 			codon[2] = complement(rCodon[0])
       trans := translate1(codon)
 			if trans == '_' {
-				// stop on stop codons
+				// elide stop codons
 				continue
 			}
 			result = append(result, trans)

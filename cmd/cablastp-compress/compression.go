@@ -179,6 +179,9 @@ func compress(db *cablastp.DB, orgSeqId int,
         db.MatchKmerSize, db.ExtSeqIdThreshold,
         mem)
         
+       
+      // TODO if this original (reduced) sequence is overall shorter than the
+      // minimum match length, we should still accept it.
         
       // Don't bother to do a reverse extension if it can't end up long enough
       
@@ -201,6 +204,8 @@ func compress(db *cablastp.DB, orgSeqId int,
       // If the part of the original (reduced) sequence does not exceed the
       // minimum match length, then we don't accept the match and move
       // on to the next one.
+      // TODO if it's too short because the original sequence is too short,
+      // and we've matched almost the whole thing, then we should accept it.
       if len(redMatch) < db.MinMatchLen {
         continue
       }
@@ -225,6 +230,7 @@ func compress(db *cablastp.DB, orgSeqId int,
 
       // If we're close to the end of the original sequence, extend
       // the match to the end.
+      // TODO perhaps this logic should move up. Swallow short sequences.
       if len(redMatch)+db.MatchExtend >= redSeq.Len()-int(current) {
         redMatch = redSeq.Residues[current:]
         // changed = true

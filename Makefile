@@ -4,7 +4,7 @@ install:
 	go install -p 6 . \
 		./cmd/cablastp-compress ./cmd/cablastp-decompress \
 		./cmd/cablastp-search ./cmd/cablastp-psisearch \
-		./cmd/cablastp-deltasearch
+		./cmd/cablastp-deltasearch ./cmd/cablastp-xsearch
 
 blosum/blosum.go:
 	scripts/mkBlosum | gofmt > blosum/blosum.go

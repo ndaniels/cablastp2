@@ -109,7 +109,7 @@ func main() {
   if err != nil {
     fatalf("Could not open '%s' database: %s\n", flag.Arg(0), err)
   }
-
+  
   reducedFasta, err := cablastp.ReduceQuerySeqs(inputFastaQuery)
   if err != nil {
     fatalf("Could not reduce alphabet of input query: %s\n", err)
