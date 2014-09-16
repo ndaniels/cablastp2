@@ -5,7 +5,7 @@ import (
 	"encoding/xml"
 	"flag"
 	"fmt"
-  "io"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -13,7 +13,7 @@ import (
 	"path"
 	"runtime"
 	"runtime/pprof"
-  // "strings"
+	// "strings"
 
 	"github.com/TuftsBCB/io/fasta"
 	"github.com/TuftsBCB/seq"
@@ -44,8 +44,9 @@ var (
 	flagMemProfile     = ""
 	flagCoarseEval     = 5.0
 	flagNoCleanup      = false
-  flagCompressQuery  = false
-  flagBatchQueries   = false
+	flagCompressQuery  = false
+	flagBatchQueries   = false
+	flagIterativeQuery = false
 )
 
 // blastArgs are all the arguments after "--blast-args".
@@ -79,6 +80,8 @@ func init() {
 		"When set, a CPU profile will be written to the file specified.")
 	flag.StringVar(&flagMemProfile, "memprofile", flagMemProfile,
 		"When set, a memory profile will be written to the file specified.")
+	flag.BoolVar(&flagIterativeQuery, "iterative-queries", flagIterativeQuery,
+		"When set, will process queries one at a time instead of as a batch.")
 
 	// find '--blast-args' and chop off the remainder before letting the flag
 	// package have its way.
@@ -96,8 +99,8 @@ func init() {
 }
 
 func main() {
-	queryBuf  := new(bytes.Buffer) // might need more than 1 buffer
-  searchBuf := new(bytes.Buffer) // might need more than 1 buffer
+	queryBuf := new(bytes.Buffer)  // might need more than 1 buffer
+	searchBuf := new(bytes.Buffer) // might need more than 1 buffer
 
 	if flag.NArg() != 2 {
 		flag.Usage()
@@ -114,15 +117,16 @@ func main() {
 	}
 
 	db, err := cablastp.NewReadDB(flag.Arg(0))
-  if err != nil {
-    fatalf("Could not open '%s' database: %s\n", flag.Arg(0), err)
-  }
-  // For query-compression mode, we first run compression on the query file
-  // then coarse-coarse search, decompress both, fine-fine search.
-  // otherwise, just coarse search, decompress results, fine search.
+	if err != nil {
+		fatalf("Could not open '%s' database: %s\n", flag.Arg(0), err)
+	}
+	// For query-compression mode, we first run compression on the query file
+	// then coarse-coarse search, decompress both, fine-fine search.
+	// otherwise, just coarse search, decompress results, fine search.
 	// iterate over the query sequences in the input fasta
-  // initially, only implement standard search.
-	
+	// initially, only implement standard search.
+
+	cablastp.Vprintln("\nProcessing Queries one at a time...")
 	f := fasta.NewWriter(queryBuf)
 	reader := fasta.NewReader(inputFastaQuery)
 	for i := 0; true; i++ {
@@ -138,27 +142,37 @@ func main() {
 		// generate 6 ORFs
 		transSeqs := cablastp.Translate(origSeq)
 		for _, s := range transSeqs {
-      // reduce each one
+			// reduce each one
 			result := seq.NewSequenceString(n, string(cablastp.Reduce(s)))
 			f.Write(result)
 		}
-		
-		
+
+		if flagIterativeQuery {
+			transQueries := bytes.NewReader(queryBuf.Bytes())
+			processQueries(db, transQueries, searchBuf)
+			queryBuf.Reset()
+		}
 	}
-  
-  transQuery := bytes.NewReader(queryBuf.Bytes())
 
+	if !flagIterativeQuery {
+		transQueries := bytes.NewReader(queryBuf.Bytes())
+		processQueries(db, transQueries, searchBuf)
+	}
+
+	cleanup(db)
+}
+
+func processQueries(
+	db *cablastp.DB, transQueries *bytes.Reader, searchBuf *bytes.Buffer) error {
 	// now we will read from queryBuf!
-  // I think we create a NewReader from queryBuf?
-  // this now needs to become the replacement for inputFastaQuery
-  // so must use a different buffer for that.
-  // we need a buffer for the query trans/reduce
-  // and a buffer for coarse blast results
-
-	
+	// I think we create a NewReader from queryBuf?
+	// this now needs to become the replacement for inputFastaQuery
+	// so must use a different buffer for that.
+	// we need a buffer for the query trans/reduce
+	// and a buffer for coarse blast results
 
 	cablastp.Vprintln("\nBlasting query on coarse database...")
-	if err := blastCoarse(db, transQuery, searchBuf); err != nil {
+	if err := blastCoarse(db, transQueries, searchBuf); err != nil {
 		fatalf("Error blasting coarse database: %s\n", err)
 	}
 
@@ -202,8 +216,6 @@ func main() {
 			fatalf("Could not delete fine BLAST database: %s\n", err)
 		}
 	}
-
-	cleanup(db)
 }
 
 func s(i int) string {
