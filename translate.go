@@ -119,5 +119,6 @@ func complement(char byte) byte {
   	case 'N':
   		return 'N'
   	}
+    Vprintf("bad letter %c\n", char)
   	panic("bad letter")
 }

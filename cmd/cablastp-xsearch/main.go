@@ -36,7 +36,7 @@ var (
 	// Flags that affect the operation of search.
 	// Flags that control algorithmic parameters are stored in `dbConf`.
 	flagMakeBlastDB    = "makeblastdb"
-	flagBlastp         = "blastp"
+	flagBlastx         = "blastx"
 	flagBlastn         = "blastn"
 	flagGoMaxProcs     = runtime.NumCPU()
 	flagQuiet          = false
@@ -57,9 +57,9 @@ func init() {
 	flag.StringVar(&flagMakeBlastDB, "makeblastdb",
 		flagMakeBlastDB,
 		"The location of the 'makeblastdb' executable.")
-	flag.StringVar(&flagBlastp, "blastp",
-		flagBlastp,
-		"The location of the 'blastp' executable.")
+	flag.StringVar(&flagBlastx, "blastx",
+		flagBlastx,
+		"The location of the 'blastx' executable.")
 	flag.StringVar(&flagBlastn, "blastn",
 		flagBlastn,
 		"The location of the 'blastn' executable.")
@@ -142,20 +142,10 @@ func main() {
 			result := seq.NewSequenceString(n, string(cablastp.Reduce(s)))
 			f.Write(result)
 		}
-		
-		
 	}
   
+  f.Flush()
   transQuery := bytes.NewReader(queryBuf.Bytes())
-
-	// now we will read from queryBuf!
-  // I think we create a NewReader from queryBuf?
-  // this now needs to become the replacement for inputFastaQuery
-  // so must use a different buffer for that.
-  // we need a buffer for the query trans/reduce
-  // and a buffer for coarse blast results
-
-	
 
 	cablastp.Vprintln("\nBlasting query on coarse database...")
 	if err := blastCoarse(db, transQuery, searchBuf); err != nil {
@@ -226,7 +216,7 @@ func blastFine(
 	}
 	flags = append(flags, blastArgs...)
 
-	cmd := exec.Command(flagBlastp, flags...)
+	cmd := exec.Command(flagBlastx, flags...)
 	cmd.Stdin = stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -296,6 +286,9 @@ func expandBlastHits(
 			}
 		}
 	}
+  if len(oseqs) == 0 {
+    return nil, fmt.Errorf("No hits from coarse search\n")
+  }
 	return oseqs, nil
 }
 
