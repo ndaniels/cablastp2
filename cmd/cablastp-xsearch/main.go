@@ -82,6 +82,8 @@ func init() {
 		"When set, a memory profile will be written to the file specified.")
 	flag.BoolVar(&flagIterativeQuery, "iterative-queries", flagIterativeQuery,
 		"When set, will process queries one at a time instead of as a batch.")
+	flag.BoolVar(&flagCompressQuery, "compressed-queries", flagCompressQuery,
+		"When set, will process compress queries before search.")
 
 	// find '--blast-args' and chop off the remainder before letting the flag
 	// package have its way.
@@ -149,20 +151,29 @@ func main() {
 
 		if flagIterativeQuery {
 			transQueries := bytes.NewReader(queryBuf.Bytes())
-			processQueries(db, transQueries, searchBuf)
+			processQueries(db, transQueries, searchBuf, flagCompressQuery)
 			queryBuf.Reset()
 		}
 	}
 
 	if !flagIterativeQuery {
 		transQueries := bytes.NewReader(queryBuf.Bytes())
-		processQueries(db, transQueries, searchBuf)
+		processQueries(db, transQueries, searchBuf, flagCompressQuery)
 	}
 
 	cleanup(db)
 }
 
 func processQueries(
+	db *cablastp.DB, transQueries *bytes.Reader, searchBuf *bytes.Buffer, compressQuery bool) error {
+
+	if( compressQuery){
+		processCompressedQueries(db, transQueries, searchBuf)
+	} else {
+		processNormalQueries(db,transQueries, searchBuf)
+	}
+
+func processNormalQueries(
 	db *cablastp.DB, transQueries *bytes.Reader, searchBuf *bytes.Buffer) error {
 	// now we will read from queryBuf!
 	// I think we create a NewReader from queryBuf?
@@ -171,30 +182,27 @@ func processQueries(
 	// we need a buffer for the query trans/reduce
 	// and a buffer for coarse blast results
 
+
 	cablastp.Vprintln("\nBlasting query on coarse database...")
-	if err := blastCoarse(db, transQueries, searchBuf); err != nil {
-		fatalf("Error blasting coarse database: %s\n", err)
-	}
+	err := blastCoarse(qdb, transQueries, searchBuf)
+	handleFatalError("Error blasting coarse database", err)
 
 	cablastp.Vprintln("Decompressing blast hits...")
 	expandedSequences, err := expandBlastHits(db, searchBuf)
-	if err != nil {
-		fatalf("%s\n", err)
-	}
+	handleFatalError("Error decompressing blast hits", err)
 
 	// Write the contents of the expanded sequences to a fasta file.
 	// It is then indexed using makeblastdb.
 	searchBuf.Reset()
-	if err := writeFasta(expandedSequences, searchBuf); err != nil {
-		fatalf("Could not create FASTA input from coarse hits: %s\n", err)
-	}
+	err := writeFasta(expandedSequences, searchBuf)
+	handleFatalError("Could not create FASTA input from coarse hits", err)
+
 
 	// Create the fine blast db in a temporary directory
 	cablastp.Vprintln("Building fine BLAST database...")
 	tmpDir, err := makeFineBlastDB(db, searchBuf)
-	if err != nil {
-		fatalf("Could not create fine database to search on: %s\n", err)
-	}
+	handleFatalError("Could not create fine database to search on", err)
+
 
 	// retrieve the cluster members for the original representative query seq
 
@@ -203,19 +211,68 @@ func processQueries(
 	// Finally, run the query against the fine fasta database and pass on the
 	// stdout and stderr...
 	cablastp.Vprintln("Blasting query on fine database...")
-	if _, err := inputFastaQuery.Seek(0, os.SEEK_SET); err != nil {
-		fatalf("Could not seek to start of query fasta input: %s\n", err)
-	}
-	if err := blastFine(db, tmpDir, inputFastaQuery); err != nil {
-		fatalf("Error blasting fine database: %s\n", err)
-	}
+	err := inputFastaQuery.Seek(0, os.SEEK_SET); 
+	handleFatalError("Could not seek to start of query fasta input", err)
+
+	err := blastFine(db, tmpDir, inputFastaQuery);
+	handleFatalError("Error blasting fine database", err) 
+
 
 	// Delete the temporary fine database.
 	if !flagNoCleanup {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			fatalf("Could not delete fine BLAST database: %s\n", err)
+		err := os.RemoveAll(tmpDir)
+		handleFatalError("Could not delete fine BLAST database", err)
 		}
 	}
+}
+
+func processCompressedQueries(db *cablastp.DB, transQueries *bytes.Reader, searchBuf *bytes.Buffer) error {
+	
+	cablastp.Vprintln("Compressing queries into a database...")
+	qDB, err = compressQueries( transQueries)
+	handleFatalError("Error compressing queries", err)
+	qReader := fasta.NewReader(qDb.coarseFasta)
+
+	cablastp.Vprintln("\nBlasting query on coarse database...")
+	err := blastCoarse(db, qReader, searchBuf)
+	handleFatalError("Error blasting coarse database", err)
+
+	cablastp.Vprintln("Decompressing coarse blast hits...")
+	expandedSequences, err := expandBlastHits(db, searchBuf)
+	handleFatalError("Error decompressing coarse blast hits", err)
+
+	cablastp.Vprintln("Making FASTA from coarse blast hits...")
+	searchBuf.reset()
+	err := writeFasta(expandedSequences, searchBuf)
+	handleFatalError("Could not create FASTA input from coarse hits", err)
+
+	cablastp.Vprintln("Building fine BLAST target database...")
+	targetTmpDir, err := makeFineBlastDB(db, searchBuf)
+	handleFatalError("Could not create fine database to search on", err)
+
+	cablastp.Vprintln("Blasting original query on fine database...")
+	err := blastFine( db, tmpDir, transQueries)
+	handleFatalError("Error blasting fine database", err) 
+}
+
+func compressQueries( transQueries *bytes.Reader) (*cablastp.DB, error) {
+	cablastp.Vprintln("Creating database to compress queries...")
+	queryDB, err := cablastp.NewWriteDB(dbConf, transQueries)
+	handleFatalError("Error creating a new database", err)
+
+	cablastp.Vprintln("Starting query compression...")
+	pool := startCompressWorkers( queryDB)
+	orgSeqId := queryDB.ComDb.NumSequences()
+	for _, arg := range flag.Args()[1:]{
+		seqChan, err := cablastp.ReadOriginalSeqs(arg, ignoredResidues)
+		handleFatalError("Error reading original sequences", err)
+
+		for readSeq := range seqChan {
+			orgSeqId = pool.compress(orgSeqId, readSeq.Seq)
+		}
+	}
+	cleanup(queryDB, &pool)
+	return &queryDB, nil
 }
 
 func s(i int) string {
@@ -371,4 +428,10 @@ func usage() {
 		path.Base(os.Args[0]))
 	cablastp.PrintFlagDefaults()
 	os.Exit(1)
+}
+
+func handleFatalError(msg string, err error) error {
+	if err != nil {
+		fatalf(msg+": %s\n", err)
+	}
 }
