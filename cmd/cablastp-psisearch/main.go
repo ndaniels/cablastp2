@@ -255,6 +255,9 @@ func expandBlastHits(
       }
     }
   }
+  if len(oseqs) == 0 {
+    return nil, fmt.Errorf("No hits from coarse search\n")
+  }
   return oseqs, nil
 }
 
