@@ -99,6 +99,14 @@ func main() {
   if !flagQuiet {
     cablastp.Verbose = true
   }
+  
+	if len(flagCpuProfile) > 0 {
+		f, err := os.Create(flagCpuProfile)
+		if err != nil {
+			fatalf("%s\n", err)
+		}
+		pprof.StartCPUProfile(f)
+	}
 
   inputFastaQuery, err := getInputFasta()
   if err != nil {
