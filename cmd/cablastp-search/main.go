@@ -99,6 +99,14 @@ func main() {
   if !flagQuiet {
     cablastp.Verbose = true
   }
+  
+	if len(flagCpuProfile) > 0 {
+		f, err := os.Create(flagCpuProfile)
+		if err != nil {
+			fatalf("%s\n", err)
+		}
+		pprof.StartCPUProfile(f)
+	}
 
   inputFastaQuery, err := getInputFasta()
   if err != nil {
@@ -249,6 +257,9 @@ func expandBlastHits(
         oseqs = append(oseqs, oseq)
       }
     }
+  }
+  if len(oseqs) == 0 {
+    return nil, fmt.Errorf("No hits from coarse search\n")
   }
   return oseqs, nil
 }
