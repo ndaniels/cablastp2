@@ -162,6 +162,7 @@ func main() {
 		}
 
 		if flagIterativeQuery {
+			f.Flush()
 			transQueries := bytes.NewReader(queryBuf.Bytes())
 			processQueries(db, transQueries, searchBuf)
 			queryBuf.Reset()
@@ -170,6 +171,7 @@ func main() {
 
 	if !flagIterativeQuery {
 		cablastp.Vprintln("\nProcessing Queries in one batch...")
+		f.Flush()
 		transQueries := bytes.NewReader(queryBuf.Bytes())
 		processQueries(db, transQueries, searchBuf)
 	}
@@ -185,9 +187,6 @@ func processQueries(
 	// so must use a different buffer for that.
 	// we need a buffer for the query trans/reduce
 	// and a buffer for coarse blast results
-
-	f.Flush()
-	transQuery := bytes.NewReader(queryBuf.Bytes())
 
 	cablastp.Vprintln("\nBlasting query on coarse database...")
 	err := blastCoarse(db, transQueries, searchBuf)
