@@ -36,7 +36,7 @@ var (
 	// Flags that affect the operation of search.
 	// Flags that control algorithmic parameters are stored in `dbConf`.
 	flagMakeBlastDB    = "makeblastdb"
-	flagBlastp         = "blastp"
+	flagBlastx         = "blastx"
 	flagBlastn         = "blastn"
 	flagGoMaxProcs     = runtime.NumCPU()
 	flagQuiet          = false
@@ -58,9 +58,9 @@ func init() {
 	flag.StringVar(&flagMakeBlastDB, "makeblastdb",
 		flagMakeBlastDB,
 		"The location of the 'makeblastdb' executable.")
-	flag.StringVar(&flagBlastp, "blastp",
-		flagBlastp,
-		"The location of the 'blastp' executable.")
+	flag.StringVar(&flagBlastx, "blastx",
+		flagBlastx,
+		"The location of the 'blastx' executable.")
 	flag.StringVar(&flagBlastn, "blastn",
 		flagBlastn,
 		"The location of the 'blastn' executable.")
@@ -167,6 +167,7 @@ func main() {
 			queryBuf.Reset()
 		}
 	}
+<<<<<<< HEAD
 
 	if !flagIterativeQuery {
 		cablastp.Vprintln("\nProcessing Queries in one batch...")
@@ -186,6 +187,12 @@ func processQueries(
 	// we need a buffer for the query trans/reduce
 	// and a buffer for coarse blast results
 
+=======
+  
+  f.Flush()
+  transQuery := bytes.NewReader(queryBuf.Bytes())
+
+>>>>>>> master
 	cablastp.Vprintln("\nBlasting query on coarse database...")
 	err := blastCoarse(db, transQueries, searchBuf)
 	handleFatalError("Error blasting coarse database", err)
@@ -348,7 +355,7 @@ func blastFine(
 	}
 	flags = append(flags, blastArgs...)
 
-	cmd := exec.Command(flagBlastp, flags...)
+	cmd := exec.Command(flagBlastx, flags...)
 	cmd.Stdin = stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -418,6 +425,9 @@ func expandBlastHits(
 			}
 		}
 	}
+  if len(oseqs) == 0 {
+    return nil, fmt.Errorf("No hits from coarse search\n")
+  }
 	return oseqs, nil
 }
 

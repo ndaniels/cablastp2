@@ -14,7 +14,7 @@ func reduce1(char byte) byte {
 	case 'X':
 		return 'N'
 	}
-	panic("bad letter")
+	panic("bad letter, could not reduce")
 }
 
 func Reduce(seq []byte) []byte {

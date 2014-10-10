@@ -91,7 +91,7 @@ func ReduceQuerySeqs(
 			result := seq.NewSequenceString(n, string(rs))
 			f.Write(result)
 		}
-		
+		f.Flush()
 		
 		return bytes.NewReader(buf.Bytes()), nil
 	}
