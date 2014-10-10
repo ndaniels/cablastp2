@@ -167,7 +167,6 @@ func main() {
 			queryBuf.Reset()
 		}
 	}
-<<<<<<< HEAD
 
 	if !flagIterativeQuery {
 		cablastp.Vprintln("\nProcessing Queries in one batch...")
@@ -187,12 +186,9 @@ func processQueries(
 	// we need a buffer for the query trans/reduce
 	// and a buffer for coarse blast results
 
-=======
-  
-  f.Flush()
-  transQuery := bytes.NewReader(queryBuf.Bytes())
+	f.Flush()
+	transQuery := bytes.NewReader(queryBuf.Bytes())
 
->>>>>>> master
 	cablastp.Vprintln("\nBlasting query on coarse database...")
 	err := blastCoarse(db, transQueries, searchBuf)
 	handleFatalError("Error blasting coarse database", err)
@@ -425,9 +421,9 @@ func expandBlastHits(
 			}
 		}
 	}
-  if len(oseqs) == 0 {
-    return nil, fmt.Errorf("No hits from coarse search\n")
-  }
+	if len(oseqs) == 0 {
+		return nil, fmt.Errorf("No hits from coarse search\n")
+	}
 	return oseqs, nil
 }
 
