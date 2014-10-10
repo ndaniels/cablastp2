@@ -2,12 +2,13 @@ package cablastp
 
 import (
 	"bytes"
-  // "compress/gzip"
+	// "compress/gzip"
 	"io"
-  // "os"
-	"strings"
+	// "os"
+	"fmt"
 	"github.com/TuftsBCB/io/fasta"
 	"github.com/TuftsBCB/seq"
+	"strings"
 )
 
 type SearchOperator func(*bytes.Reader) (*bytes.Reader, error)
@@ -46,11 +47,11 @@ func Translate(sequence []byte) [][]byte {
 	// three ORFs
 	for orf := 0; orf <= 2; orf++ {
 		var result []byte
-    // forward direction
+		// forward direction
 		for i := orf; i < (l - 2); i += 3 {
-      var codon []byte
+			var codon []byte
 			codon = sequence[i : i+3]
-      trans := translate1(codon)
+			trans := translate1(codon)
 			if trans == '_' {
 				// elide stop codons for now?
 				continue
@@ -58,15 +59,15 @@ func Translate(sequence []byte) [][]byte {
 			result = append(result, trans)
 		}
 		results = append(results, result)
-    // reverse complement
+		// reverse complement
 		result = make([]byte, 0)
 		for i := (l - 3 - orf); i >= 0; i -= 3 {
-      codon := make([]byte, 3)
+			codon := make([]byte, 3)
 			rCodon := sequence[i : i+3]
 			codon[0] = complement(rCodon[2])
 			codon[1] = complement(rCodon[1])
 			codon[2] = complement(rCodon[0])
-      trans := translate1(codon)
+			trans := translate1(codon)
 			if trans == '_' {
 				// elide stop codons
 				continue
@@ -107,17 +108,17 @@ func translate1(codon []byte) byte {
 }
 
 func complement(char byte) byte {
-  	switch char {
-  	case 'A':
-  		return 'T'
-  	case 'T':
-  		return 'A'
-  	case 'C':
-  		return 'G'
-  	case 'G':
-  		return 'C'
-  	case 'N':
-  		return 'N'
-  	}
-  	panic("bad letter")
+	switch char {
+	case 'A':
+		return 'T'
+	case 'T':
+		return 'A'
+	case 'C':
+		return 'G'
+	case 'G':
+		return 'C'
+	case 'N':
+		return 'N'
+	}
+	panic(fmt.Sprintf("bad letter: %c", char))
 }
