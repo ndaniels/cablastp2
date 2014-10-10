@@ -108,7 +108,6 @@ func translate1(codon []byte) byte {
 }
 
 func complement(char byte) byte {
-<<<<<<< HEAD
 	switch char {
 	case 'A':
 		return 'T'
@@ -123,20 +122,3 @@ func complement(char byte) byte {
 	}
 	panic(fmt.Sprintf("bad letter: %c", char))
 }
-=======
-  	switch char {
-  	case 'A':
-  		return 'T'
-  	case 'T':
-  		return 'A'
-  	case 'C':
-  		return 'G'
-  	case 'G':
-  		return 'C'
-  	case 'N':
-  		return 'N'
-  	}
-    Vprintf("bad letter %c\n", char)
-  	panic("bad letter")
-}
->>>>>>> master
