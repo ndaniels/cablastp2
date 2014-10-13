@@ -2,7 +2,9 @@ package cablastp
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/ndaniels/cablastp2/blosum"
+	"os"
 	"runtime"
 	"sync"
 )
@@ -40,6 +42,19 @@ func StartCompressReducedWorkers(db *DB) redCompressPool {
 		go pool.worker()
 	}
 	return pool
+}
+
+// When the program ends (either by SIGTERM or when all of the input sequences
+// are compressed), 'cleanup' is executed. It writes all CPU/memory profiles
+// if they're enabled, waits for the compression workers to finish, saves
+// the database to disk and closes all file handles.
+func CleanupDB(db *DB, pool *redCompressPool) {
+
+	pool.done()
+	if err := db.Save(); err != nil {
+		fatalf("Could not save database: %s\n", err)
+	}
+	db.WriteClose()
 }
 
 // compress will construct a redCompressJob and send it to the worker pool.
@@ -711,4 +726,9 @@ func nwAlign(rseq, oseq []byte, mem *memory) [2][]byte {
 	}
 
 	return [2][]byte{refAln, orgAln}
+}
+
+func fatalf(format string, v ...interface{}) {
+	fmt.Fprintf(os.Stderr, format, v...)
+	os.Exit(1)
 }

@@ -1,0 +1,392 @@
+BLASTX 2.2.29+
+
+
+Reference: Stephen F. Altschul, Thomas L. Madden, Alejandro A.
+Schaffer, Jinghui Zhang, Zheng Zhang, Webb Miller, and David J.
+Lipman (1997), "Gapped BLAST and PSI-BLAST: a new generation of
+protein database search programs", Nucleic Acids Res. 25:3389-3402.
+
+
+
+Database: blastdb-fine
+           502 sequences; 249,289 total letters
+
+
+
+Query= reverse translation of gi|3991100|gb|AAC84527.1|AR000950 Sequence 10
+from patent US 5736377
+
+Length=271
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 6825186400
+
+
+Query= reverse translation of gi|3991100|gb|AAC84527.1|AR000950 Sequence 10
+from patent US 5736377
+
+Length=271
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 6825186400
+
+
+Query= reverse translation of gi|3991100|gb|AAC84527.1|AR000950 Sequence 10
+from patent US 5736377
+
+Length=254
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 6825261700
+
+
+Query= reverse translation of gi|3991100|gb|AAC84527.1|AR000950 Sequence 10
+from patent US 5736377
+
+Length=250
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 6825274250
+
+
+Query= reverse translation of gi|3991100|gb|AAC84527.1|AR000950 Sequence 10
+from patent US 5736377
+
+Length=250
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 6825274250
+
+
+Query= reverse translation of gi|3991100|gb|AAC84527.1|AR000950 Sequence 10
+from patent US 5736377
+
+Length=257
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 6825249150
+
+
+Query= reverse translation of gi|260051040|gb|ACX20657.1| Sequence 49264
+from patent US 7569389 to a 1239 base sequence of most likely
+codons.
+
+Length=413
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 7643590304
+
+
+Query= reverse translation of gi|260051040|gb|ACX20657.1| Sequence 49264
+from patent US 7569389 to a 1239 base sequence of most likely
+codons.
+
+Length=413
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 7643590304
+
+
+Query= reverse translation of gi|260051040|gb|ACX20657.1| Sequence 49264
+from patent US 7569389 to a 1239 base sequence of most likely
+codons.
+
+Length=388
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 6824696950
+
+
+Query= reverse translation of gi|260051040|gb|ACX20657.1| Sequence 49264
+from patent US 7569389 to a 1239 base sequence of most likely
+codons.
+
+Length=398
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 6824659300
+
+
+Query= reverse translation of gi|260051040|gb|ACX20657.1| Sequence 49264
+from patent US 7569389 to a 1239 base sequence of most likely
+codons.
+
+Length=384
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 6824709500
+
+
+Query= reverse translation of gi|260051040|gb|ACX20657.1| Sequence 49264
+from patent US 7569389 to a 1239 base sequence of most likely
+codons.
+
+Length=400
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 6824646750
+
+
+Query= reverse translation of gi|10063693|gb|AAE38413.1| Sequence 3 from
+patent US 5994097
+
+Length=430
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 9008500578
+
+
+Query= reverse translation of gi|10063693|gb|AAE38413.1| Sequence 3 from
+patent US 5994097
+
+Length=430
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 9008500578
+
+
+Query= reverse translation of gi|10063693|gb|AAE38413.1| Sequence 3 from
+patent US 5994097
+
+Length=394
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 6824671850
+
+
+Query= reverse translation of gi|10063693|gb|AAE38413.1| Sequence 3 from
+patent US 5994097
+
+Length=419
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 8189561040
+
+
+Query= reverse translation of gi|10063693|gb|AAE38413.1| Sequence 3 from
+patent US 5994097
+
+Length=412
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 7643590304
+
+
+Query= reverse translation of gi|10063693|gb|AAE38413.1| Sequence 3 from
+patent US 5994097
+
+Length=410
+
+
+***** No hits found *****
+
+
+
+Lambda      K        H        a         alpha
+   0.318    0.134    0.401    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 7643604360
+
+
+  Database: blastdb-fine
+    Posted date:  Oct 13, 2014  12:50 PM
+  Number of letters in database: 249,289
+  Number of sequences in database:  502
+
+
+
+Matrix: BLOSUM62
+Gap Penalties: Existence: 11, Extension: 1
+Neighboring words threshold: 12
+Window for multiple hits: 40

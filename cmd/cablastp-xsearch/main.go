@@ -82,7 +82,7 @@ func init() {
 		"When set, a memory profile will be written to the file specified.")
 	flag.BoolVar(&flagIterativeQuery, "iterative-queries", flagIterativeQuery,
 		"When set, will process queries one at a time instead of as a batch.")
-	flag.BoolVar(&flagCompressQuery, "compressed-queries", flagCompressQuery,
+	flag.BoolVar(&flagCompressQuery, "compress-query", flagCompressQuery,
 		"When set, will process compress queries before search.")
 
 	// find '--blast-args' and chop off the remainder before letting the flag
@@ -121,59 +121,61 @@ func main() {
 		fatalf("Could not open '%s' database: %s\n", flag.Arg(0), err)
 	}
 
-	if flagCompressQuery {
-		processCompressedQueries(db, inputFastaQuery, searchBuf)
-	}
 	// For query-compression mode, we first run compression on the query file
 	// then coarse-coarse search, decompress both, fine-fine search.
 	// otherwise, just coarse search, decompress results, fine search.
 	// iterate over the query sequences in the input fasta
 	// initially, only implement standard search.
 
-	if flagIterativeQuery {
-		cablastp.Vprintln("\nProcessing Queries one at a time...")
-	}
-
-	f := fasta.NewWriter(queryBuf)
-	reader := fasta.NewReader(inputFastaQuery)
-
-	for i := 0; true; i++ {
-
-		sequence, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			fatalf("Could not read input fasta query: %s\n", err)
-		}
-
-		origSeq := sequence.Bytes()
-		n := sequence.Name
-		// generate 6 ORFs
-		transSeqs := cablastp.Translate(origSeq)
-
-		for _, s := range transSeqs {
-			// reduce each one
-			result := seq.NewSequenceString(n, string(cablastp.Reduce(s)))
-
-			f.Write(result)
-
-		}
+	if flagCompressQuery {
+		processCompressedQueries(db, inputFastaQuery, searchBuf)
+	} else {
 
 		if flagIterativeQuery {
+			cablastp.Vprintln("\nProcessing Queries one at a time...")
+		}
+
+		f := fasta.NewWriter(queryBuf)
+		reader := fasta.NewReader(inputFastaQuery)
+
+		for i := 0; true; i++ {
+
+			sequence, err := reader.Read()
+			if err == io.EOF {
+				break
+			}
+
+			if err != nil {
+				fatalf("Could not read input fasta query: %s\n", err)
+			}
+
+			origSeq := sequence.Bytes()
+			n := sequence.Name
+			// generate 6 ORFs
+			transSeqs := cablastp.Translate(origSeq)
+
+			for _, s := range transSeqs {
+				// reduce each one
+				result := seq.NewSequenceString(n, string(cablastp.Reduce(s)))
+
+				f.Write(result)
+
+			}
+
+			if flagIterativeQuery {
+				f.Flush()
+				transQueries := bytes.NewReader(queryBuf.Bytes())
+				processQueries(db, transQueries, searchBuf)
+				queryBuf.Reset()
+			}
+		}
+
+		if !flagIterativeQuery {
+			cablastp.Vprintln("\nProcessing Queries in one batch...")
 			f.Flush()
 			transQueries := bytes.NewReader(queryBuf.Bytes())
 			processQueries(db, transQueries, searchBuf)
-			queryBuf.Reset()
 		}
-	}
-
-	if !flagIterativeQuery {
-		cablastp.Vprintln("\nProcessing Queries in one batch...")
-		f.Flush()
-		transQueries := bytes.NewReader(queryBuf.Bytes())
-		processQueries(db, transQueries, searchBuf)
 	}
 
 	cleanup(db)
@@ -252,26 +254,60 @@ func processCompressedQueries(db *cablastp.DB, inputQueries *bytes.Reader, searc
 	compQueries, err := getInputFasta(compQueryFilename)
 	handleFatalError("Error opening compressed query file", err)
 
-	cablastp.Vprintln("\nBlasting query on coarse database...")
-	err = blastCoarse(db, compQueries, searchBuf)
-	handleFatalError("Error blasting coarse database", err)
+	queryBuf := new(bytes.Buffer)
+	f := fasta.NewWriter(queryBuf)
+	reader := fasta.NewReader(compQueries)
 
-	cablastp.Vprintln("Decompressing coarse blast hits...")
-	expandedSequences, err := expandBlastHits(db, searchBuf)
-	handleFatalError("Error decompressing coarse blast hits", err)
+	for i := 0; true; i++ {
 
-	cablastp.Vprintln("Making FASTA from coarse blast hits...")
-	searchBuf.Reset()
-	err = writeFasta(expandedSequences, searchBuf)
-	handleFatalError("Could not create FASTA input from coarse hits", err)
+		sequence, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
 
-	cablastp.Vprintln("Building fine BLAST target database...")
-	targetTmpDir, err := makeFineBlastDB(db, searchBuf)
-	handleFatalError("Could not create fine database to search on", err)
+		if err != nil {
+			fatalf("Could not read input fasta query: %s\n", err)
+		}
 
-	cablastp.Vprintln("Blasting original query on fine database...")
-	err = blastFine(db, targetTmpDir, inputQueries)
-	handleFatalError("Error blasting fine database", err)
+		origSeq := sequence.Bytes()
+		n := sequence.Name
+		// generate 6 ORFs
+		transSeqs := cablastp.Translate(origSeq)
+
+		for _, s := range transSeqs {
+			// reduce each one
+			result := seq.NewSequenceString(n, string(cablastp.Reduce(s)))
+
+			f.Write(result)
+
+		}
+
+		f.Flush()
+		transQueries := bytes.NewReader(queryBuf.Bytes())
+
+		cablastp.Vprintln("\nBlasting query on coarse database...")
+		err = blastCoarse(db, transQueries, searchBuf)
+		handleFatalError("Error blasting coarse database", err)
+
+		cablastp.Vprintln("Decompressing coarse blast hits...")
+		expandedSequences, err := expandBlastHits(db, searchBuf)
+		handleFatalError("Error decompressing coarse blast hits", err)
+
+		cablastp.Vprintln("Making FASTA from coarse blast hits...")
+		searchBuf.Reset()
+		err = writeFasta(expandedSequences, searchBuf)
+		handleFatalError("Could not create FASTA input from coarse hits", err)
+
+		cablastp.Vprintln("Building fine BLAST target database...")
+		targetTmpDir, err := makeFineBlastDB(db, searchBuf)
+		handleFatalError("Could not create fine database to search on", err)
+
+		cablastp.Vprintln("Blasting original query on fine database...")
+		err = blastFine(db, targetTmpDir, inputQueries)
+		handleFatalError("Error blasting fine database", err)
+
+		queryBuf.Reset()
+	}
 
 	return nil
 }
@@ -285,6 +321,7 @@ func su(i uint64) string {
 }
 
 func compressQueries(queryFileName string) (*cablastp.DB, error) {
+	cablastp.Vprintln("")
 	dbConf = cablastp.DefaultDBConf
 	db, err := cablastp.NewWriteDB(dbConf, "./tmp_query_database")
 	handleFatalError("Failed to open new db", err)
@@ -293,6 +330,8 @@ func compressQueries(queryFileName string) (*cablastp.DB, error) {
 	mainQuit := make(chan struct{}, 0)
 
 	seqChan, err := cablastp.ReadOriginalSeqs(queryFileName, []byte{})
+	handleFatalError("Could not read query sequences", err)
+
 	for readSeq := range seqChan {
 		// Do a non-blocking receive to see if main needs to quit.
 		select {
@@ -301,7 +340,9 @@ func compressQueries(queryFileName string) (*cablastp.DB, error) {
 			return nil, nil
 		default:
 		}
+
 		handleFatalError("Failed to read sequence", readSeq.Err)
+
 		dbConf.BlastDBSize += uint64(readSeq.Seq.Len())
 		redReadSeq := &cablastp.ReducedSeq{
 			&cablastp.Sequence{
@@ -313,7 +354,8 @@ func compressQueries(queryFileName string) (*cablastp.DB, error) {
 		}
 		seqId = pool.CompressReduced(seqId, redReadSeq)
 	}
-	// cleanup(db, &pool)
+	cablastp.CleanupDB(db, &pool)
+	cablastp.Vprintln("")
 	return db, nil
 }
 

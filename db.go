@@ -243,7 +243,8 @@ func (db *DB) Save() error {
 }
 
 func (db *DB) CoarseFastaLocation() string {
-	return db.coarseFasta.Name()
+	s := db.CoarseDB.FileFasta.Name()
+	return s
 }
 
 // ReadClose closes all appropriate files after reading from a database.
