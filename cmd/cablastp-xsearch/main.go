@@ -246,8 +246,12 @@ func processCompressedQueries(db *cablastp.DB, inputQueries *bytes.Reader, searc
 	}
 
 	cablastp.Vprintln("Compressing queries into a database...")
-	qDB, err := compressQueries(queryFile.Name())
+	qDBDirLoc, err := compressQueries(queryFile.Name())
 	handleFatalError("Error compressing queries", err)
+
+	cablastp.Vprintln("Opening DB for reading")
+	qDB, err := cablastp.NewReadDB(qDBDirLoc)
+	handleFatalError("Error opening query database", err)
 
 	cablastp.Vprintln("Opening compressed queries for search...")
 	compQueryFilename := qDB.CoarseFastaLocation()
@@ -258,7 +262,7 @@ func processCompressedQueries(db *cablastp.DB, inputQueries *bytes.Reader, searc
 	f := fasta.NewWriter(queryBuf)
 	reader := fasta.NewReader(compQueries)
 
-	for i := 0; true; i++ {
+	for origSeqID := 0; true; origSeqID++ {
 
 		sequence, err := reader.Read()
 		if err == io.EOF {
@@ -283,10 +287,10 @@ func processCompressedQueries(db *cablastp.DB, inputQueries *bytes.Reader, searc
 		}
 
 		f.Flush()
-		transQueries := bytes.NewReader(queryBuf.Bytes())
+		transCoarseQueries := bytes.NewReader(queryBuf.Bytes())
 
 		cablastp.Vprintln("\nBlasting query on coarse database...")
-		err = blastCoarse(db, transQueries, searchBuf)
+		err = blastCoarse(db, transCoarseQueries, searchBuf)
 		handleFatalError("Error blasting coarse database", err)
 
 		cablastp.Vprintln("Decompressing coarse blast hits...")
@@ -298,12 +302,27 @@ func processCompressedQueries(db *cablastp.DB, inputQueries *bytes.Reader, searc
 		err = writeFasta(expandedSequences, searchBuf)
 		handleFatalError("Could not create FASTA input from coarse hits", err)
 
+		cablastp.Vprintln("Expanding coarse query...")
+		expQuery, err := expandCoarseSequence(qDB, origSeqID, &sequence)
+		handleFatalError("Could not expand coarse queries", err)
+
+		fineQueryBuf := new(bytes.Buffer)
+		fineWriter := fasta.NewWriter(fineQueryBuf)
+		for _, fineQuery := range expQuery {
+			fineQueryBytes := fineQuery.FastaSeq().Bytes() // <- Is This the same as fineQuery.Residues()?
+			fineName := fineQuery.Name
+			writeSeq := seq.NewSequenceString(fineName, string(fineQueryBytes))
+			fineWriter.Write(writeSeq)
+		}
+		fineWriter.Flush()
+		transFineQueries := bytes.NewReader(fineQueryBuf.Bytes())
+
 		cablastp.Vprintln("Building fine BLAST target database...")
 		targetTmpDir, err := makeFineBlastDB(db, searchBuf)
 		handleFatalError("Could not create fine database to search on", err)
 
 		cablastp.Vprintln("Blasting original query on fine database...")
-		err = blastFine(db, targetTmpDir, inputQueries)
+		err = blastFine(db, targetTmpDir, transFineQueries)
 		handleFatalError("Error blasting fine database", err)
 
 		queryBuf.Reset()
@@ -320,10 +339,11 @@ func su(i uint64) string {
 	return fmt.Sprintf("%d", i)
 }
 
-func compressQueries(queryFileName string) (*cablastp.DB, error) {
+func compressQueries(queryFileName string) (string, error) {
 	cablastp.Vprintln("")
 	dbConf = cablastp.DefaultDBConf
-	db, err := cablastp.NewWriteDB(dbConf, "./tmp_query_database")
+	dbDirLoc := "./tmp_query_database"
+	db, err := cablastp.NewWriteDB(dbConf, dbDirLoc)
 	handleFatalError("Failed to open new db", err)
 	pool := cablastp.StartCompressReducedWorkers(db)
 	seqId := db.ComDB.NumSequences()
@@ -337,7 +357,7 @@ func compressQueries(queryFileName string) (*cablastp.DB, error) {
 		select {
 		case <-mainQuit:
 			<-mainQuit // wait for cleanup to finish before exiting main.
-			return nil, nil
+			return "", nil
 		default:
 		}
 
@@ -356,7 +376,7 @@ func compressQueries(queryFileName string) (*cablastp.DB, error) {
 	}
 	cablastp.CleanupDB(db, &pool)
 	cablastp.Vprintln("")
-	return db, nil
+	return dbDirLoc, nil
 }
 
 // queryDBName, err := ioutil.TempDir(".", "tmp_compressed_"+queryFileName)
@@ -439,6 +459,7 @@ func expandBlastHits(
 	used := make(map[int]bool, 100) // prevent original sequence duplicates
 	oseqs := make([]cablastp.OriginalSeq, 0, 100)
 	for _, hit := range results.Hits {
+
 		for _, hsp := range hit.Hsps {
 			someOseqs, err := db.CoarseDB.Expand(db.ComDB,
 				hit.Accession, hsp.HitFrom, hsp.HitTo)
@@ -466,6 +487,26 @@ func expandBlastHits(
 		return nil, fmt.Errorf("No hits from coarse search\n")
 	}
 	return oseqs, nil
+}
+
+func expandCoarseSequence(db *cablastp.DB, seqId int, coarseSequence *seq.Sequence) ([]cablastp.OriginalSeq, error) {
+	originalSeqs, err := db.CoarseDB.Expand(db.ComDB, seqId, 0, coarseSequence.Len())
+	if err != nil {
+		return nil, err
+	}
+	// var redSeqs [originalSeqs]cablastp.ReducedSeq
+	// for _, oSeq := range originalSeqs {
+	// 	redSeq := &cablastp.ReducedSeq{
+	// 		&cablastp.Sequence{
+	// 			Name:     readSeq.Seq.Name,
+	// 			Residues: readSeq.Seq.Residues,
+	// 			Offset:   readSeq.Seq.Offset,
+	// 			Id:       readSeq.Seq.Id,
+	// 		},
+	// 	}
+	// }
+
+	return originalSeqs, nil
 }
 
 func blastCoarse(

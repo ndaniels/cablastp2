@@ -167,7 +167,6 @@ func (comdb *CompressedDB) readClose() {
 // database. It will also wait for the writer goroutine to finish.
 func (comdb *CompressedDB) writeClose() {
 	close(comdb.writerChan) // will close comdb.File
-
 	// Wait for the writer goroutine to finish.
 	<-comdb.writerDone
 }
@@ -212,6 +211,7 @@ func (cseq CompressedSeq) String() string {
 
 // Add will add a LinkToCoarse to the end of the CompressedSeq's Links list.
 func (cseq *CompressedSeq) Add(link LinkToCoarse) {
+
 	cseq.Links = append(cseq.Links, link)
 }
 
@@ -227,18 +227,18 @@ func (cseq CompressedSeq) Decompress(coarse *CoarseDB) (OriginalSeq, error) {
 					"because a link refers to an invalid coarse sequence "+
 					"id: %d.", cseq.Id, lk.CoarseSeqId)
 		}
-		
-    // if len(lk.OrigSeq) == 0 {
-    //   residues = append(residues, lk.OrigSeq...)
-    // } else {
-    //   coarseSeq, err := coarse.ReadCoarseSeq(int(lk.CoarseSeqId))
-    //   if err != nil {
-    //     return OriginalSeq{}, err
-    //   }
-    //   subCorres := coarseSeq.Residues[lk.CoarseStart:lk.CoarseEnd]
-    //   residues = append(residues, subCorres...)
-    // }
-		
+
+		// if len(lk.OrigSeq) == 0 {
+		//   residues = append(residues, lk.OrigSeq...)
+		// } else {
+		//   coarseSeq, err := coarse.ReadCoarseSeq(int(lk.CoarseSeqId))
+		//   if err != nil {
+		//     return OriginalSeq{}, err
+		//   }
+		//   subCorres := coarseSeq.Residues[lk.CoarseStart:lk.CoarseEnd]
+		//   residues = append(residues, subCorres...)
+		// }
+
 		residues = append(residues, lk.OrigSeq...)
 	}
 	return *NewOriginalSeq(cseq.Id, cseq.Name, residues), nil
