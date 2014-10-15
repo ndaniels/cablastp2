@@ -101,7 +101,6 @@ func init() {
 }
 
 func main() {
-	queryBuf := new(bytes.Buffer)  // might need more than 1 buffer
 	searchBuf := new(bytes.Buffer) // might need more than 1 buffer
 
 	if flag.NArg() != 2 {
@@ -113,8 +112,7 @@ func main() {
 		cablastp.Verbose = true
 	}
 
-	inputFastaQuery, err := getInputFasta(flag.Arg(1))
-	handleFatalError("Could not read input fasta query", err)
+	inputFastaQueryName := flag.Arg(1)
 
 	db, err := cablastp.NewReadDB(flag.Arg(0))
 	if err != nil {
@@ -128,8 +126,14 @@ func main() {
 	// initially, only implement standard search.
 
 	if flagCompressQuery {
-		processCompressedQueries(db, inputFastaQuery, searchBuf)
+
+		processCompressedQueries(db, inputFastaQueryName, searchBuf)
+
 	} else {
+
+		queryBuf := new(bytes.Buffer) // might need more than 1 buffer
+		inputFastaQuery, err := getInputFasta(inputFastaQueryName)
+		handleFatalError("Could not read input fasta query", err)
 
 		if flagIterativeQuery {
 			cablastp.Vprintln("\nProcessing Queries one at a time...")
@@ -230,23 +234,10 @@ func processQueries(
 	return nil
 }
 
-func processCompressedQueries(db *cablastp.DB, inputQueries *bytes.Reader, searchBuf *bytes.Buffer) error {
-
-	queryFile, err := ioutil.TempFile(".", "query_")
-	handleFatalError("Error making temporary file for queries", err)
-	queryWriter := fasta.NewWriter(queryFile)
-	queryReader := fasta.NewReader(inputQueries)
-	for i := 0; true; i++ {
-		seq, err := queryReader.Read()
-		if err == io.EOF {
-			break
-		}
-		handleFatalError("Error reading queries", err)
-		queryWriter.Write(seq)
-	}
+func processCompressedQueries(db *cablastp.DB, inputQueryFilename string, searchBuf *bytes.Buffer) error {
 
 	cablastp.Vprintln("Compressing queries into a database...")
-	qDBDirLoc, err := compressQueries(queryFile.Name())
+	qDBDirLoc, err := compressQueries(inputQueryFilename)
 	handleFatalError("Error compressing queries", err)
 
 	cablastp.Vprintln("Opening DB for reading")
@@ -324,6 +315,10 @@ func processCompressedQueries(db *cablastp.DB, inputQueries *bytes.Reader, searc
 		cablastp.Vprintln("Blasting original query on fine database...")
 		err = blastFine(db, targetTmpDir, transFineQueries)
 		handleFatalError("Error blasting fine database", err)
+
+		cablastp.Vprintln("Cleaning up...")
+		err = os.RemoveAll(qDBDirLoc)
+		handleFatalError("Could not remove query database", err)
 
 		queryBuf.Reset()
 	}
