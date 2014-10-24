@@ -369,7 +369,7 @@ func compressQueries(queryFileName string) (string, error) {
 		}
 		seqId = pool.CompressReduced(seqId, redReadSeq)
 	}
-	cablastp.CleanupDB(db, &pool)
+	cablastp.compress.CleanupDB(db, &pool)
 	cablastp.Vprintln("")
 	return dbDirLoc, nil
 }

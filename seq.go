@@ -2,11 +2,10 @@ package cablastp
 
 import (
 	"fmt"
+	"github.com/TuftsBCB/seq"
 	"log"
 	"strings"
 	"sync"
-
-	"github.com/TuftsBCB/seq"
 )
 
 // SeqIdentity computes the Sequence identity of two byte slices.
@@ -134,6 +133,10 @@ func (seq *Sequence) String() string {
 	}
 	return fmt.Sprintf("> %s (%d) (%d, %d)\n%s",
 		seq.Name, seq.Id, seq.Offset, seq.Len(), string(seq.Residues))
+}
+
+func (seq *Sequence) AlphabetSize() int {
+	return 0
 }
 
 // referenceSeq embeds a Sequence and serves as a typing mechanism to

@@ -2,36 +2,34 @@ package cablastp
 
 import (
 	"bytes"
-	"fmt"
-	"github.com/ndaniels/cablastp2/blosum"
-	"os"
+
 	"runtime"
 	"sync"
 )
 
-// redCompressPool represents a pool of workers where each worker is responsible
+// compressPool represents a pool of workers where each worker is responsible
 // for compressing a single sequence at a time.
-type redCompressPool struct {
+type compressPool struct {
 	db     *DB
-	jobs   chan redCompressJob
+	jobs   chan compressJob
 	wg     *sync.WaitGroup
 	closed bool
 }
 
-// redCompressJob values are messages sent to the pool of workers when a new
+// compressJob values are messages sent to the pool of workers when a new
 // sequence should be compressed.
-type redCompressJob struct {
-	redSeqId int
-	redSeq   *ReducedSeq
+type compressJob struct {
+	seqId int
+	seq   *Sequence
 }
 
 // startCompressWorkers initializes a pool of compression workers.
 //
 // The compressPool returned can be used to compress sequences concurrently.
-func StartCompressReducedWorkers(db *DB) redCompressPool {
+func StartCompressWorkers(db *DB) compressPool {
 	wg := &sync.WaitGroup{}
-	jobs := make(chan redCompressJob, 200)
-	pool := redCompressPool{
+	jobs := make(chan compressJob, 200)
+	pool := compressPool{
 		db:     db,
 		jobs:   jobs,
 		wg:     wg,
@@ -44,26 +42,13 @@ func StartCompressReducedWorkers(db *DB) redCompressPool {
 	return pool
 }
 
-// When the program ends (either by SIGTERM or when all of the input sequences
-// are compressed), 'cleanup' is executed. It writes all CPU/memory profiles
-// if they're enabled, waits for the compression workers to finish, saves
-// the database to disk and closes all file handles.
-func CleanupDB(db *DB, pool *redCompressPool) {
-
-	pool.done()
-	if err := db.Save(); err != nil {
-		fatalf("Could not save database: %s\n", err)
-	}
-	db.WriteClose()
-}
-
-// compress will construct a redCompressJob and send it to the worker pool.
+// compress will construct a compressJob and send it to the worker pool.
 //
 // compress returns the next original sequence id to be used.
-func (pool redCompressPool) CompressReduced(id int, seq *ReducedSeq) int {
-	pool.jobs <- redCompressJob{
-		redSeqId: id,
-		redSeq:   seq,
+func (pool compressPool) Compress(id int, seq *Sequence) int {
+	pool.jobs <- compressJob{
+		orgSeqId: id,
+		orgSeq:   seq,
 	}
 	return id + 1
 }
@@ -72,10 +57,10 @@ func (pool redCompressPool) CompressReduced(id int, seq *ReducedSeq) int {
 // memory arena (to prevent allocation in hot spots like alignment and
 // seed lookup), and sends the compressed sequences to the compressed
 // database for writing.
-func (pool redCompressPool) worker() {
+func (pool compressPool) worker() {
 	mem := newMemory()
 	for job := range pool.jobs {
-		comSeq := CompressReduced(pool.db, job.redSeqId, job.redSeq, mem)
+		comSeq := CompressGeneric(pool.db, job.seqId, job.seq, mem)
 		pool.db.ComDB.Write(comSeq)
 	}
 	pool.wg.Done()
@@ -83,13 +68,42 @@ func (pool redCompressPool) worker() {
 
 // done 'joins' the worker goroutines. (Blocks until all workers are finished
 // compressing sequences.)
-func (pool *redCompressPool) done() {
+func (pool *compressPool) done() {
 	if pool.closed {
 		return
 	}
 	pool.closed = true
 	close(pool.jobs)
 	pool.wg.Wait()
+}
+
+func CompressGeneric(db *DB, seqId int,
+	seq *Sequence, mem *memory) CompressedSeq {
+
+	if seq.AlphabetSize() == 24 {
+		orgSeq := OriginalSeq{seq}
+		return CompressOriginal(db, seqId, orgSeq, mem)
+	} else if seq.AlphabetSize() == 5 {
+		redSeq := ReducedSeq{seq}
+		return CompressReduced(db, seqId, redSeq, mem)
+	} else {
+		panic("Unknown alphabet size!")
+	}
+}
+
+func CompressOriginal(db *DB, orgSeqId int,
+	orgSeq *OriginalSeq, mem *memory) CompressedSeq {
+
+	redSeq := NewReducedSeq(orgSeq)
+	return compress(db, orgSeqId, orgSeq, redSeq, mem)
+
+}
+
+func CompressReduced(db *DB, redSeqId int,
+	redSeq *ReducedSeq, mem *memory) CompressedSeq {
+
+	return compress(db, redSeqId, redSeq, redSeq, mem)
+
 }
 
 // TODO: need to pass around a pair of nativeSeq and reducedSeq
@@ -104,8 +118,8 @@ func (pool *redCompressPool) done() {
 //
 // N.B. `mem` is used in alignment and seed lookups to prevent allocation.
 // Think of them as goroutine-specific memory arenas.
-func CompressReduced(db *DB, redSeqId int,
-	redSeq *ReducedSeq, mem *memory) CompressedSeq {
+func compress(db *DB, orgSeqId int,
+	orgSeq *Sequence, redSeq *ReducedSeq, mem *memory) CompressedSeq {
 
 	// cseqExt and oseqExt will contain `extSeedSize` residues after the end
 	// of any particular seed in coarse and original sequences, respectively.
@@ -113,13 +127,13 @@ func CompressReduced(db *DB, redSeqId int,
 	var cseqExt, oseqExt []byte
 
 	// Start the creation of a compressed sequence.
-	cseq := NewCompressedSeq(redSeqId, redSeq.Name)
+	cseq := NewCompressedSeq(orgSeqId, orgSeq.Name)
 
 	// Convenient aliases.
 	coarsedb := db.CoarseDB
 	mapSeedSize := db.MapSeedSize
 	extSeedSize := db.ExtSeedSize
-	olen := redSeq.Len()
+	olen := orgSeq.Len()
 
 	// Keep track of two pointers. 'current' refers to the residue index in the
 	// original sequence that extension is currently originating from.
@@ -146,7 +160,7 @@ func CompressReduced(db *DB, redSeqId int,
 		// note that we are checking the original, unreduced sequence here!
 		if db.LowComplexity > 0 {
 			skip := skipLowComplexity(
-				redSeq.Residues[current:], db.MinMatchLen, db.LowComplexity)
+				orgSeq.Residues[current:], db.MinMatchLen, db.LowComplexity)
 			if skip > 0 {
 				current += skip
 				continue
@@ -271,7 +285,9 @@ func CompressReduced(db *DB, redSeqId int,
 			if orgStart-lastMatch > 0 {
 				redSub := redSeq.NewSubSequence(
 					uint(lastMatch), uint(current))
-				addReducedWithoutMatch(&cseq, coarsedb, redSeqId, redSub)
+				orgSub := orgSeq.NewSubSequence(
+					uint(lastMatch), uint(current))
+				addWithoutMatch(&cseq, coarsedb, orgSeqId, orgSub, redSub)
 			}
 
 			// For the given match, add a LinkToCoarse to the portion of
@@ -280,11 +296,11 @@ func CompressReduced(db *DB, redSeqId int,
 			// LinkToCompressed to the coarse sequence matched. This
 			// serves as a bridge to expand coarse sequences into their
 			// original sequences.
-			orgMatch := string(redSeq.Residues[orgStart:orgEnd])
+			orgMatch := string(orgSeq.Residues[orgStart:orgEnd])
 			cseq.Add(NewLinkToCoarse(
 				uint(corSeqId), uint(corStart), uint(corEnd), orgMatch))
 			corSeq.AddLink(NewLinkToCompressed(
-				uint32(redSeqId), uint16(corStart), uint16(corEnd)))
+				uint32(orgSeqId), uint16(corStart), uint16(corEnd)))
 
 			// Skip the current pointer ahead to the end of this match.
 			// Update the lastMatch pointer to point at the end of this
@@ -301,21 +317,13 @@ func CompressReduced(db *DB, redSeqId int,
 	// If there are any leftover residues, then no good match for them
 	// could be found. Therefore, add them to the coarse database and
 	// create the appropriate links.
-	if redSeq.Len()-lastMatch > 0 {
+	if orgSeq.Len()-lastMatch > 0 {
+		orgSub := orgSeq.NewSubSequence(uint(lastMatch), uint(orgSeq.Len()))
 		redSub := redSeq.NewSubSequence(uint(lastMatch), uint(redSeq.Len()))
-		addReducedWithoutMatch(&cseq, coarsedb, redSeqId, redSub)
+		addWithoutMatch(&cseq, coarsedb, orgSeqId, orgSub, redSub)
 	}
 
 	return cseq
-}
-
-func reverse(a []byte) []byte {
-	l := len(a)
-	result := make([]byte, l)
-	for i, v := range a {
-		result[l-i-1] = v
-	}
-	return result
 }
 
 // extendMatch uses a combination of ungapped and gapped extension to find
@@ -434,8 +442,9 @@ func skipLowComplexity(seq []byte, windowSize, regionSize int) int {
 //
 // An appropriate link is also added to the given compressed sequence.
 // TODO we need to juggle the reduced and original seq portions
-func addReducedWithoutMatch(cseq *CompressedSeq,
-	coarsedb *CoarseDB, redSeqId int, redSub *ReducedSeq) {
+func addWithoutMatch(cseq *CompressedSeq,
+	coarsedb *CoarseDB, orgSeqId int, orgSub *Sequence,
+	redSub *ReducedSeq) {
 
 	// Explicitly copy residues to avoid pinning memory.
 	redSubCpy := make([]byte, len(redSub.Residues))
@@ -443,292 +452,18 @@ func addReducedWithoutMatch(cseq *CompressedSeq,
 
 	corSeqId, corSeq := coarsedb.Add(redSubCpy)
 	corSeq.AddLink(
-		NewLinkToCompressed(uint32(redSeqId), 0, uint16(len(redSubCpy))))
+		NewLinkToCompressed(uint32(orgSeqId), 0, uint16(len(redSubCpy))))
 
 	cseq.Add(
 		NewLinkToCoarse(uint(corSeqId), 0, uint(len(redSubCpy)),
-			string(redSub.Residues)))
+			string(orgSub.Residues)))
 }
 
-// func min(a, b int) int {
-// 	if a < b {
-// 		return a
-// 	}
-// 	return b
-// }
-
-// func max(a, b int) int {
-// 	if a > b {
-// 		return a
-// 	}
-// 	return b
-// }
-
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-// memory.go in cablastp-compress
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-
-const (
-	memSeqSize       = 10000
-	dynamicTableSize = memSeqSize * memSeqSize
-	numSeeds         = 100
-)
-
-// memory is a goroutine-specific memory arena, specifically used in each
-// compression worker goroutine. Its purpose is to reduce the amount of
-// memory allocation in hot-spots: sequence alignment and seed lookup.
-type memory struct {
-	table    []int
-	ref, org []byte
-	seeds    [][2]uint
-}
-
-func newMemory() *memory {
-	return &memory{
-		table: make([]int, memSeqSize*memSeqSize),
-		ref:   make([]byte, memSeqSize),
-		org:   make([]byte, memSeqSize),
-		seeds: make([][2]uint, 0, numSeeds),
+func reverse(a []byte) []byte {
+	l := len(a)
+	result := make([]byte, l)
+	for i, v := range a {
+		result[l-i-1] = v
 	}
-}
-
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-// align.go in cablastp-compress
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-
-// alignLen computes the length of a sequence in an alignment.
-// (i.e., the number of residues that aren't "-".)
-func alignLen(seq []byte) (length int) {
-	for _, res := range seq {
-		if res != '-' {
-			length++
-		}
-	}
-	return
-}
-
-// alignUngapped takes a coarse and an original sub-sequence and returns a
-// length corresponding to the number of amino acids scanned by greedily
-// consuming successive K-mer matches in N-mer windows.
-//
-// The algorithm works by attempting to find *exact* K-mer matches between the
-// sequences in N-mer windows. If N residues are scanned and no K-mer match
-// is found, the the current value of length is returned (which may be 0).
-// If a K-mer match is found, the current value of length is set to the total
-// number of amino acid residues scanned, and a search for the next K-mer match
-// for the next N-mer window is started.
-func alignUngapped(rseq []byte, oseq []byte,
-	windowSize, kmerSize, idThreshold int) int {
-
-	length, scanned, successive := 0, 0, 0
-	tryNextWindow := true
-	for tryNextWindow {
-		tryNextWindow = false
-		for i := 0; i < windowSize; i++ {
-			// If we've scanned all residues in one of the sub-sequences, then
-			// there is nothing left to do for ungapped extension. Therefore,
-			// quit and return the number of residues scanned up until the
-			// *last* match.
-			if scanned >= len(rseq) || scanned >= len(oseq) {
-				break
-			}
-
-			if rseq[scanned] == oseq[scanned] {
-				successive++
-			} else {
-				successive = 0
-			}
-
-			scanned++
-			if successive == kmerSize {
-				// Get the residues between matches: i.e., after the last
-				// match to the start of this match. But only if there is at
-				// least one residue in that range.
-				if (scanned-kmerSize)-length > 0 {
-					id := SeqIdentity(
-						rseq[length:scanned-kmerSize],
-						oseq[length:scanned-kmerSize])
-
-					// If the identity is less than the threshold, then this
-					// K-mer match is no good. But keep trying until the window
-					// is closed. (We "keep trying" by decrementing successive
-					// matches by 1.)
-					if id < idThreshold {
-						successive--
-						continue
-					}
-				}
-
-				// If we're here, then we've found a valid match. Update the
-				// length to indicate the number of residues scanned and make
-				// sure we try the next Ungapped window.
-				length = scanned
-				successive = 0
-				tryNextWindow = true
-				break
-			}
-		}
-	}
-	return length
-}
-
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-// nw.go in cablastp-compress
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-
-var (
-	resTrans [256]int
-)
-
-// Initialize the alignment lookup table. (i.e., translate ASCII residue
-// characters to BLOSUM62 matrix indices.)
-func init() {
-	for i := 0; i < len(blosum.Alphabet62); i++ {
-		resTrans[blosum.Alphabet62[i]] = i
-	}
-}
-
-// nwAlign performs Needleman-Wunsch sequence alignment.
-//
-// This is adapted from Dan Kortschak's Needleman-Wunsch algorithm from the
-// biogo package: code.google.com/p/biogo.
-//
-// It's mostly copied from its original form, but it is optimized specifically
-// for  to limit allocations and to absolve the need for the
-// biogo/seq.Seq type. There are several additional optimizations to limit
-// functional calls and pointer deferences.
-//
-// Perhaps the biggest optimization; however, is constraining dynamic
-// programming to only allow a limited number of gaps proportion to the
-// length of the large of rseq and oseq.
-func nwAlign(rseq, oseq []byte, mem *memory) [2][]byte {
-	gap := len(blosum.Matrix62) - 1
-	r, c := len(rseq)+1, len(oseq)+1
-	off := 0
-
-	constrained := true
-	constraint := max(r, c) / 4
-	if r <= 11 || c <= 11 {
-		constrained = false
-	}
-
-	var table []int
-	var j int
-	if r*c > dynamicTableSize {
-		table = make([]int, r*c)
-	} else {
-		table = mem.table[:r*c]
-		for i := range table {
-			table[i] = 0
-		}
-	}
-
-	var sdiag, sup, sleft, rVal, oVal int
-	gapChar := byte('-')
-	matrix := blosum.Matrix62
-
-	var i2, i3 int
-	for i := 1; i < r; i++ {
-		i2 = (i - 1) * c
-		i3 = i * c
-		for j = 1; j < c; j++ {
-			if constrained && ((i-j) > constraint || (j-i) > constraint) {
-				continue
-			}
-			rVal, oVal = resTrans[rseq[i-1]], resTrans[oseq[j-1]]
-
-			off = i2 + (j - 1)
-			sdiag = table[off] + matrix[rVal][oVal]
-			sup = table[off+1] + matrix[rVal][gap]
-			sleft = table[off+c] + matrix[gap][oVal]
-			switch {
-			case sdiag > sup && sdiag > sleft:
-				table[i3+j] = sdiag
-			case sup > sleft:
-				table[i3+j] = sup
-			default:
-				table[i3+j] = sleft
-			}
-		}
-	}
-
-	refAln, orgAln := mem.ref[:0], mem.org[:0]
-
-	i, j := r-1, c-1
-	for i > 0 && j > 0 {
-		rVal, oVal = resTrans[rseq[i-1]], resTrans[oseq[j-1]]
-
-		sdiag = table[(i-1)*c+(j-1)] + matrix[rVal][oVal]
-		sup = table[(i-1)*c+j] + matrix[gap][oVal]
-		sleft = table[i*c+(j-1)] + matrix[rVal][gap]
-		switch {
-		case sdiag > sup && sdiag > sleft:
-			i--
-			j--
-			refAln = append(refAln, rseq[i])
-			orgAln = append(orgAln, oseq[j])
-		case sup > sleft:
-			i--
-			refAln = append(refAln, rseq[i])
-			orgAln = append(orgAln, gapChar)
-		default:
-			j--
-			refAln = append(refAln, gapChar)
-			orgAln = append(orgAln, oseq[j])
-		}
-	}
-
-	for ; i > 0; i-- {
-		refAln = append(refAln, rseq[i-1])
-		orgAln = append(orgAln, gapChar)
-	}
-	for ; j > 0; j-- {
-		refAln = append(refAln, gapChar)
-		orgAln = append(orgAln, oseq[j-1])
-	}
-
-	if len(refAln) == len(orgAln) {
-		for i, j := 0, len(refAln)-1; i < j; i, j = i+1, j-1 {
-			refAln[i], refAln[j] = refAln[j], refAln[i]
-			orgAln[i], orgAln[j] = orgAln[j], orgAln[i]
-		}
-	} else {
-		for i, j := 0, len(refAln)-1; i < j; i, j = i+1, j-1 {
-			refAln[i], refAln[j] = refAln[j], refAln[i]
-		}
-		for i, j := 0, len(orgAln)-1; i < j; i, j = i+1, j-1 {
-			orgAln[i], orgAln[j] = orgAln[j], orgAln[i]
-		}
-	}
-
-	return [2][]byte{refAln, orgAln}
-}
-
-func fatalf(format string, v ...interface{}) {
-	fmt.Fprintf(os.Stderr, format, v...)
-	os.Exit(1)
+	return result
 }
