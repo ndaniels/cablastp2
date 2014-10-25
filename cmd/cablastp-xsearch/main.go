@@ -55,6 +55,8 @@ var blastArgs []string
 func init() {
 	log.SetFlags(0)
 
+	// Regular cablastp-xsearch options
+
 	flag.StringVar(&flagMakeBlastDB, "makeblastdb",
 		flagMakeBlastDB,
 		"The location of the 'makeblastdb' executable.")
@@ -84,6 +86,50 @@ func init() {
 		"When set, will process queries one at a time instead of as a batch.")
 	flag.BoolVar(&flagCompressQuery, "compress-query", flagCompressQuery,
 		"When set, will process compress queries before search.")
+
+	// compress options
+
+	flag.IntVar(&dbConf.MinMatchLen, "min-match-len",
+		dbConf.MinMatchLen,
+		"The minimum size of a match.")
+	flag.IntVar(&dbConf.MatchKmerSize, "match-kmer-size",
+		dbConf.MatchKmerSize,
+		"The size of kmer fragments to match in ungapped extension.")
+	flag.IntVar(&dbConf.ExtSeqIdThreshold, "ext-seq-id-threshold",
+		dbConf.ExtSeqIdThreshold,
+		"The sequence identity threshold of [un]gapped extension. \n"+
+			"\t(An integer in the inclusive range from 0 to 100.)")
+	flag.IntVar(&dbConf.MatchSeqIdThreshold, "match-seq-id-threshold",
+		dbConf.MatchSeqIdThreshold,
+		"The sequence identity threshold of an entire match.")
+	flag.IntVar(&dbConf.MatchExtend, "match-extend",
+		dbConf.MatchExtend,
+		"The maximum number of residues to blindly extend a \n"+
+			"\tmatch without regard to sequence identity. This is \n"+
+			"\tto avoid small sequences in the coarse database.")
+	flag.IntVar(&dbConf.MapSeedSize, "map-seed-size",
+		dbConf.MapSeedSize,
+		"The size of a seed in the K-mer map. This size combined with\n"+
+			"\t'ext-seed-size' forms the total seed size.")
+
+	flag.IntVar(&dbConf.LowComplexity, "low-complexity",
+		dbConf.LowComplexity,
+		"The window size used to detect regions of low complexity.\n"+
+			"\tLow complexity regions are repetitions of a single amino\n"+
+			"\tacid residue. Low complexity regions are skipped when\n"+
+			"\ttrying to extend a match.")
+	flag.IntVar(&dbConf.SeedLowComplexity, "seed-low-complexity",
+		dbConf.SeedLowComplexity,
+		"The seed window size used to detect regions of low complexity.\n"+
+			"\tLow complexity regions are repetitions of a single amino\n"+
+			"\tacid residue. Low complexity regions matching this window\n"+
+			"\tsize are not included in the seeds table.")
+	// flag.Float64Var(&flagMaxSeedsGB, "max-seeds", flagMaxSeedsGB,
+	// 	"When set, the in memory seeds table will be completely erased\n"+
+	// 		"\twhen the memory used by seeds exceeds the specified number,\n"+
+	// 		"\tin gigabytes.\n"+
+	// 		"\tEach seed corresponds to 16 bytes of memory.\n"+
+	// 		"\tSetting to zero disables this behavior.")
 
 	// find '--blast-args' and chop off the remainder before letting the flag
 	// package have its way.
@@ -336,7 +382,6 @@ func su(i uint64) string {
 
 func compressQueries(queryFileName string) (string, error) {
 	cablastp.Vprintln("")
-	dbConf = cablastp.DefaultDBConf
 	dbDirLoc := "./tmp_query_database"
 	db, err := cablastp.NewWriteDB(dbConf, dbDirLoc)
 	handleFatalError("Failed to open new db", err)
