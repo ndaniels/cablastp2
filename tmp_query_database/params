@@ -1,0 +1,15 @@
+MinMatchLen = 40
+MatchKmerSize = 4
+GappedWindowSize = 25
+UngappedWindowSize = 10
+ExtSeqIdThreshold = 60
+MatchSeqIdThreshold = 70
+MatchExtend = 30
+MapSeedSize = 10
+ExtSeedSize = 0
+LowComplexity = 10
+SeedLowComplexity = 6
+SavePlain = false
+ReadOnly = true
+BlastMakeBlastDB = "makeblastdb"
+BlastDBSize = 273043516

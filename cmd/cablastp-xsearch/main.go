@@ -31,10 +31,9 @@ import (
 
 var (
 	// A default configuration.
-	dbConf = cablastp.DefaultDBConf
-
+	argDBConf = cablastp.DefaultDBConf
 	// Flags that affect the operation of search.
-	// Flags that control algorithmic parameters are stored in `dbConf`.
+	// Flags that control algorithmic parameters are stored in `queryDBConf`.
 	flagMakeBlastDB    = "makeblastdb"
 	flagBlastx         = "blastx"
 	flagBlastn         = "blastn"
@@ -89,37 +88,37 @@ func init() {
 
 	// compress options
 
-	flag.IntVar(&dbConf.MinMatchLen, "min-match-len",
-		dbConf.MinMatchLen,
+	flag.IntVar(&argDBConf.MinMatchLen, "min-match-len",
+		argDBConf.MinMatchLen,
 		"The minimum size of a match.")
-	flag.IntVar(&dbConf.MatchKmerSize, "match-kmer-size",
-		dbConf.MatchKmerSize,
+	flag.IntVar(&argDBConf.MatchKmerSize, "match-kmer-size",
+		argDBConf.MatchKmerSize,
 		"The size of kmer fragments to match in ungapped extension.")
-	flag.IntVar(&dbConf.ExtSeqIdThreshold, "ext-seq-id-threshold",
-		dbConf.ExtSeqIdThreshold,
+	flag.IntVar(&argDBConf.ExtSeqIdThreshold, "ext-seq-id-threshold",
+		argDBConf.ExtSeqIdThreshold,
 		"The sequence identity threshold of [un]gapped extension. \n"+
 			"\t(An integer in the inclusive range from 0 to 100.)")
-	flag.IntVar(&dbConf.MatchSeqIdThreshold, "match-seq-id-threshold",
-		dbConf.MatchSeqIdThreshold,
+	flag.IntVar(&argDBConf.MatchSeqIdThreshold, "match-seq-id-threshold",
+		argDBConf.MatchSeqIdThreshold,
 		"The sequence identity threshold of an entire match.")
-	flag.IntVar(&dbConf.MatchExtend, "match-extend",
-		dbConf.MatchExtend,
+	flag.IntVar(&argDBConf.MatchExtend, "match-extend",
+		argDBConf.MatchExtend,
 		"The maximum number of residues to blindly extend a \n"+
 			"\tmatch without regard to sequence identity. This is \n"+
 			"\tto avoid small sequences in the coarse database.")
-	flag.IntVar(&dbConf.MapSeedSize, "map-seed-size",
-		dbConf.MapSeedSize,
+	flag.IntVar(&argDBConf.MapSeedSize, "map-seed-size",
+		argDBConf.MapSeedSize,
 		"The size of a seed in the K-mer map. This size combined with\n"+
 			"\t'ext-seed-size' forms the total seed size.")
 
-	flag.IntVar(&dbConf.LowComplexity, "low-complexity",
-		dbConf.LowComplexity,
+	flag.IntVar(&argDBConf.LowComplexity, "low-complexity",
+		argDBConf.LowComplexity,
 		"The window size used to detect regions of low complexity.\n"+
 			"\tLow complexity regions are repetitions of a single amino\n"+
 			"\tacid residue. Low complexity regions are skipped when\n"+
 			"\ttrying to extend a match.")
-	flag.IntVar(&dbConf.SeedLowComplexity, "seed-low-complexity",
-		dbConf.SeedLowComplexity,
+	flag.IntVar(&argDBConf.SeedLowComplexity, "seed-low-complexity",
+		argDBConf.SeedLowComplexity,
 		"The seed window size used to detect regions of low complexity.\n"+
 			"\tLow complexity regions are repetitions of a single amino\n"+
 			"\tacid residue. Low complexity regions matching this window\n"+
@@ -144,9 +143,11 @@ func init() {
 	flag.Parse()
 
 	runtime.GOMAXPROCS(flagGoMaxProcs)
+
 }
 
 func main() {
+
 	searchBuf := new(bytes.Buffer) // might need more than 1 buffer
 
 	if flag.NArg() != 2 {
@@ -158,13 +159,12 @@ func main() {
 		cablastp.Verbose = true
 	}
 
+	queryDBConf := argDBConf.DeepCopy() // deep copy of the default DBConf updated by the args
 	inputFastaQueryName := flag.Arg(1)
-
 	db, err := cablastp.NewReadDB(flag.Arg(0))
 	if err != nil {
 		fatalf("Could not open '%s' database: %s\n", flag.Arg(0), err)
 	}
-
 	// For query-compression mode, we first run compression on the query file
 	// then coarse-coarse search, decompress both, fine-fine search.
 	// otherwise, just coarse search, decompress results, fine search.
@@ -173,7 +173,7 @@ func main() {
 
 	if flagCompressQuery {
 
-		processCompressedQueries(db, inputFastaQueryName, searchBuf)
+		processCompressedQueries(db, queryDBConf, inputFastaQueryName, searchBuf)
 
 	} else {
 
@@ -280,10 +280,10 @@ func processQueries(
 	return nil
 }
 
-func processCompressedQueries(db *cablastp.DB, inputQueryFilename string, searchBuf *bytes.Buffer) error {
+func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inputQueryFilename string, searchBuf *bytes.Buffer) error {
 
 	cablastp.Vprintln("Compressing queries into a database...")
-	qDBDirLoc, err := compressQueries(inputQueryFilename)
+	qDBDirLoc, err := compressQueries(inputQueryFilename, queryDBConf)
 	handleFatalError("Error compressing queries", err)
 
 	cablastp.Vprintln("Opening DB for reading")
@@ -380,10 +380,11 @@ func su(i uint64) string {
 	return fmt.Sprintf("%d", i)
 }
 
-func compressQueries(queryFileName string) (string, error) {
+func compressQueries(queryFileName string, queryDBConf *cablastp.DBConf) (string, error) {
 	cablastp.Vprintln("")
 	dbDirLoc := "./tmp_query_database"
-	db, err := cablastp.NewWriteDB(dbConf, dbDirLoc)
+
+	db, err := cablastp.NewWriteDB(queryDBConf, dbDirLoc)
 	handleFatalError("Failed to open new db", err)
 	pool := cablastp.StartCompressReducedWorkers(db)
 	seqId := db.ComDB.NumSequences()
@@ -403,7 +404,7 @@ func compressQueries(queryFileName string) (string, error) {
 
 		handleFatalError("Failed to read sequence", readSeq.Err)
 
-		dbConf.BlastDBSize += uint64(readSeq.Seq.Len())
+		queryDBConf.BlastDBSize += uint64(readSeq.Seq.Len())
 		redReadSeq := &cablastp.ReducedSeq{
 			&cablastp.Sequence{
 				Name:     readSeq.Seq.Name,
