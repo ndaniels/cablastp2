@@ -31,7 +31,7 @@ import (
 
 var (
 	// A default configuration.
-	argDBConf = cablastp.DefaultDBConf
+	argDBConf = cablastp.DefaultDBConf.DeepCopy()
 	// Flags that affect the operation of search.
 	// Flags that control algorithmic parameters are stored in `queryDBConf`.
 	flagMakeBlastDB    = "makeblastdb"
@@ -283,7 +283,8 @@ func processQueries(
 func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inputQueryFilename string, searchBuf *bytes.Buffer) error {
 
 	cablastp.Vprintln("Compressing queries into a database...")
-	qDBDirLoc, err := compressQueries(inputQueryFilename, queryDBConf)
+	dbDirLoc := "./tmp_query_database"
+	qDBDirLoc, err := compressQueries(inputQueryFilename, queryDBConf, dbDirLoc)
 	handleFatalError("Error compressing queries", err)
 
 	cablastp.Vprintln("Opening DB for reading")
@@ -361,14 +362,11 @@ func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inp
 		cablastp.Vprintln("Blasting original query on fine database...")
 		err = blastFine(db, targetTmpDir, transFineQueries)
 		handleFatalError("Error blasting fine database", err)
-
-		cablastp.Vprintln("Cleaning up...")
-		err = os.RemoveAll(qDBDirLoc)
-		handleFatalError("Could not remove query database", err)
-
 		queryBuf.Reset()
 	}
-
+	cablastp.Vprintln("Cleaning up...")
+	err = os.RemoveAll(dbDirLoc)
+	handleFatalError("Could not remove query database", err)
 	return nil
 }
 
@@ -380,9 +378,8 @@ func su(i uint64) string {
 	return fmt.Sprintf("%d", i)
 }
 
-func compressQueries(queryFileName string, queryDBConf *cablastp.DBConf) (string, error) {
+func compressQueries(queryFileName string, queryDBConf *cablastp.DBConf, dbDirLoc string) (string, error) {
 	cablastp.Vprintln("")
-	dbDirLoc := "./tmp_query_database"
 
 	db, err := cablastp.NewWriteDB(queryDBConf, dbDirLoc)
 	handleFatalError("Failed to open new db", err)
@@ -524,9 +521,9 @@ func expandBlastHits(
 			}
 		}
 	}
-	if len(oseqs) == 0 {
-		return nil, fmt.Errorf("No hits from coarse search\n")
-	}
+	// if len(oseqs) == 0 {
+	// 	return nil, fmt.Errorf("No hits from coarse search\n")
+	// }
 	return oseqs, nil
 }
 
