@@ -159,7 +159,7 @@ func main() {
 		}
 	}
 
-  // TODO sort the input file, longest first. Or just preprocess this.
+	// TODO sort the input file, longest first. Or just preprocess this.
 
 	// Create a new database for writing. If we're appending, we load
 	// the coarse database into memory, and setup the database for writing.
@@ -169,7 +169,7 @@ func main() {
 	}
 	cablastp.Vprintln("")
 
-	pool := startCompressWorkers(db)
+	pool := StartCompressWorkers(db)
 	orgSeqId := db.ComDB.NumSequences()
 	mainQuit := make(chan struct{}, 0)
 
@@ -186,7 +186,7 @@ func main() {
 		pprof.StartCPUProfile(f)
 	}
 	for _, arg := range flag.Args()[1:] {
-		seqChan, err := cablastp.ReadOriginalSeqs(arg, ignoredResidues)
+		seqChan, err := cablastp.ReadOriginalSeqs(arg, ignoredResidues) //protein seq
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -206,7 +206,7 @@ func main() {
 				log.Fatal(err)
 			}
 			dbConf.BlastDBSize += uint64(readSeq.Seq.Len())
-			orgSeqId = pool.compress(orgSeqId, readSeq.Seq)
+			orgSeqId = pool.Compress(orgSeqId, readSeq.Seq)
 			verboseOutput(db, orgSeqId)
 			if flagMaxSeedsGB > 0 && orgSeqId%10000 == 0 {
 				db.CoarseDB.Seeds.MaybeWipe(flagMaxSeedsGB)

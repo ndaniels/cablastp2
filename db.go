@@ -159,7 +159,7 @@ func NewReadDB(dir string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-  
+
 	// Now try to load the configuration parameters from the 'params' file.
 	db.DBConf, err = LoadDBConf(db.params)
 	if err != nil {
@@ -240,6 +240,11 @@ func (db *DB) Save() error {
 	}
 	Vprintf("Done creating %s.\n", FileBlastCoarse)
 	return nil
+}
+
+func (db *DB) CoarseFastaLocation() string {
+	s := db.CoarseDB.FileFasta.Name()
+	return s
 }
 
 // ReadClose closes all appropriate files after reading from a database.
