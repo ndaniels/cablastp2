@@ -247,43 +247,48 @@ func processQueries(
 	cablastp.Vprintln("Decompressing blast hits...")
 	expandedSequences, err := expandBlastHits(db, searchBuf)
 	handleFatalError("Error decompressing blast hits", err)
+  if len(expandedSequences) == 0 {
+    cablastp.Vprintln("No results from coarse search")
+  } else {
+  
 
-	// Write the contents of the expanded sequences to a fasta file.
-	// It is then indexed using makeblastdb.
-	searchBuf.Reset()
-	err = writeFasta(expandedSequences, searchBuf)
-	handleFatalError("Could not create FASTA input from coarse hits", err)
+  	// Write the contents of the expanded sequences to a fasta file.
+  	// It is then indexed using makeblastdb.
+  	searchBuf.Reset()
+  	err = writeFasta(expandedSequences, searchBuf)
+  	handleFatalError("Could not create FASTA input from coarse hits", err)
 
-	// Create the fine blast db in a temporary directory
-	cablastp.Vprintln("Building fine BLAST database...")
-	tmpDir, err := makeFineBlastDB(db, searchBuf)
-	handleFatalError("Could not create fine database to search on", err)
+  	// Create the fine blast db in a temporary directory
+  	cablastp.Vprintln("Building fine BLAST database...")
+  	tmpDir, err := makeFineBlastDB(db, searchBuf)
+  	handleFatalError("Could not create fine database to search on", err)
 
-	// retrieve the cluster members for the original representative query seq
+  	// retrieve the cluster members for the original representative query seq
 
-	// pass them to blastx on the expanded (fine) db
+  	// pass them to blastx on the expanded (fine) db
 
-	// Finally, run the query against the fine fasta database and pass on the
-	// stdout and stderr...
-	cablastp.Vprintln("Blasting query on fine database...")
-	_, err = transQueries.Seek(0, 0) // Fist 0 is amount to offset, Second 0 is code for absolute
-	handleFatalError("Could not seek to start of query fasta input", err)
+  	// Finally, run the query against the fine fasta database and pass on the
+  	// stdout and stderr...
+  	cablastp.Vprintln("Blasting query on fine database...")
+  	_, err = transQueries.Seek(0, 0) // First 0 is amount to offset, Second 0 
+                                     // is code for absolute
+  	handleFatalError("Could not seek to start of query fasta input", err)
 
-	err = blastFine(db, tmpDir, transQueries)
-	handleFatalError("Error blasting fine database", err)
-
-	// Delete the temporary fine database.
-	if !flagNoCleanup {
-		err := os.RemoveAll(tmpDir)
-		handleFatalError("Could not delete fine BLAST database", err)
-	}
+  	err = blastFine(db, tmpDir, transQueries)
+  	handleFatalError("Error blasting fine database", err)
+  	// Delete the temporary fine database.
+  	if !flagNoCleanup {
+  		err := os.RemoveAll(tmpDir)
+  		handleFatalError("Could not delete fine BLAST database", err)
+  	}
+  }
 	return nil
 }
 
 func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inputQueryFilename string, searchBuf *bytes.Buffer) error {
 
 	cablastp.Vprintln("Compressing queries into a database...")
-	dbDirLoc := "./tmp_query_database"
+	dbDirLoc := "./tmp_query_database" // TODO this should be a parameter
 	qDBDirLoc, err := compressQueries(inputQueryFilename, queryDBConf, dbDirLoc)
 	handleFatalError("Error compressing queries", err)
 
@@ -334,34 +339,37 @@ func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inp
 		cablastp.Vprintln("Decompressing coarse blast hits...")
 		expandedSequences, err := expandBlastHits(db, searchBuf)
 		handleFatalError("Error decompressing coarse blast hits", err)
+    if len(expandedSequences) == 0 {
+      cablastp.Vprintln("No results from coarse search")
+    } else {
+  		cablastp.Vprintln("Making FASTA from coarse blast hits...")
+  		searchBuf.Reset()
+  		err = writeFasta(expandedSequences, searchBuf)
+  		handleFatalError("Could not create FASTA input from coarse hits", err)
 
-		cablastp.Vprintln("Making FASTA from coarse blast hits...")
-		searchBuf.Reset()
-		err = writeFasta(expandedSequences, searchBuf)
-		handleFatalError("Could not create FASTA input from coarse hits", err)
+  		cablastp.Vprintln("Expanding coarse query...")
+  		expQuery, err := expandCoarseSequence(qDB, origSeqID, &sequence)
+  		handleFatalError("Could not expand coarse queries", err)
 
-		cablastp.Vprintln("Expanding coarse query...")
-		expQuery, err := expandCoarseSequence(qDB, origSeqID, &sequence)
-		handleFatalError("Could not expand coarse queries", err)
+  		fineQueryBuf := new(bytes.Buffer)
+  		fineWriter := fasta.NewWriter(fineQueryBuf)
+  		for _, fineQuery := range expQuery {
+  			fineQueryBytes := fineQuery.FastaSeq().Bytes() // <- Is This the same as fineQuery.Residues()?
+  			fineName := fineQuery.Name
+  			writeSeq := seq.NewSequenceString(fineName, string(fineQueryBytes))
+  			fineWriter.Write(writeSeq)
+  		}
+  		fineWriter.Flush()
+  		transFineQueries := bytes.NewReader(fineQueryBuf.Bytes())
 
-		fineQueryBuf := new(bytes.Buffer)
-		fineWriter := fasta.NewWriter(fineQueryBuf)
-		for _, fineQuery := range expQuery {
-			fineQueryBytes := fineQuery.FastaSeq().Bytes() // <- Is This the same as fineQuery.Residues()?
-			fineName := fineQuery.Name
-			writeSeq := seq.NewSequenceString(fineName, string(fineQueryBytes))
-			fineWriter.Write(writeSeq)
-		}
-		fineWriter.Flush()
-		transFineQueries := bytes.NewReader(fineQueryBuf.Bytes())
+  		cablastp.Vprintln("Building fine BLAST target database...")
+  		targetTmpDir, err := makeFineBlastDB(db, searchBuf)
+  		handleFatalError("Could not create fine database to search on", err)
 
-		cablastp.Vprintln("Building fine BLAST target database...")
-		targetTmpDir, err := makeFineBlastDB(db, searchBuf)
-		handleFatalError("Could not create fine database to search on", err)
-
-		cablastp.Vprintln("Blasting original query on fine database...")
-		err = blastFine(db, targetTmpDir, transFineQueries)
-		handleFatalError("Error blasting fine database", err)
+  		cablastp.Vprintln("Blasting original query on fine database...")
+  		err = blastFine(db, targetTmpDir, transFineQueries)
+  		handleFatalError("Error blasting fine database", err)
+    }
 		queryBuf.Reset()
 	}
 	cablastp.Vprintln("Cleaning up...")
