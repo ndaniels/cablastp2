@@ -72,7 +72,7 @@ func LoadDBConf(r io.Reader) (conf *DBConf, err error) {
 			err = perr.(error)
 		}
 	}()
-	conf = DefaultDBConf
+	conf = DefaultDBConf.DeepCopy()
 
 	if _, err := toml.DecodeReader(r, &conf); err != nil {
 		return nil, err

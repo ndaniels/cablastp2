@@ -159,7 +159,8 @@ func main() {
 		cablastp.Verbose = true
 	}
 
-	queryDBConf := argDBConf.DeepCopy() // deep copy of the default DBConf updated by the args
+	queryDBConf := argDBConf.DeepCopy() // deep copy of the default DBConf 
+                                      // updated by the args
 	inputFastaQueryName := flag.Arg(1)
 	db, err := cablastp.NewReadDB(flag.Arg(0))
 	if err != nil {
@@ -286,16 +287,13 @@ func processQueries(
 }
 
 func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inputQueryFilename string, searchBuf *bytes.Buffer) error {
-
 	cablastp.Vprintln("Compressing queries into a database...")
 	dbDirLoc := "./tmp_query_database" // TODO this should be a parameter
 	qDBDirLoc, err := compressQueries(inputQueryFilename, queryDBConf, dbDirLoc)
 	handleFatalError("Error compressing queries", err)
-
 	cablastp.Vprintln("Opening DB for reading")
 	qDB, err := cablastp.NewReadDB(qDBDirLoc)
 	handleFatalError("Error opening query database", err)
-
 	cablastp.Vprintln("Opening compressed queries for search...")
 	compQueryFilename := qDB.CoarseFastaLocation()
 	compQueries, err := getInputFasta(compQueryFilename)
