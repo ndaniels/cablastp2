@@ -41,7 +41,7 @@ var (
 	flagQuiet          = false
 	flagCpuProfile     = ""
 	flagMemProfile     = ""
-	flagCoarseEval     = 5.0
+	flagCoarseEval     = 1000.0
 	flagNoCleanup      = false
 	flagCompressQuery  = false
 	flagBatchQueries   = false
@@ -318,7 +318,6 @@ func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inp
 		n := sequence.Name
 		// generate 6 ORFs
 		transSeqs := cablastp.Translate(origSeq)
-
 		for _, s := range transSeqs {
 			// reduce each one
 			result := seq.NewSequenceString(n, string(cablastp.Reduce(s)))
@@ -382,6 +381,10 @@ func s(i int) string {
 
 func su(i uint64) string {
 	return fmt.Sprintf("%d", i)
+}
+
+func sf(f float64) string {
+  return fmt.Sprintf("%.2f", f)
 }
 
 func compressQueries(queryFileName string, queryDBConf *cablastp.DBConf, dbDirLoc string) (string, error) {
@@ -560,6 +563,7 @@ func blastCoarse(
 		flagBlastn,
 		"-db", path.Join(db.Path, cablastp.FileBlastCoarse),
 		"-num_threads", s(flagGoMaxProcs),
+    "-task", "blastn-short", "-evalue", sf(flagCoarseEval), "-penalty", "-1",
 		"-outfmt", "5", "-dbsize", su(db.BlastDBSize))
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout

@@ -212,7 +212,7 @@ func (coarsedb *CoarseDB) Expand(
 
 	// Calculate the byte offset into the coarse links file where the links
 	// for the coarse sequence `i` starts.
-	Vprintf("id: %d\n", id)
+  // Vprintf("id: %d\n", id)
 	off, err := coarsedb.linkOffset(id)
 	if err != nil {
 		return nil, fmt.Errorf("Could not get link offset: %s", err)

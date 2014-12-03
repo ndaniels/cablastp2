@@ -11,7 +11,7 @@ func reduce1(char byte) byte {
 		return 'G'
 	case 'D', 'E', 'N', 'Q', 'K', 'R', 'H', 'B', 'Z':
 		return 'T'
-	case 'X':
+	case 'X', '*':
 		return 'N'
 	}
 	panic("bad letter, could not reduce")
