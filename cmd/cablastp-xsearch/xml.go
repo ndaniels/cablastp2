@@ -20,6 +20,9 @@ type hsp struct {
 	XMLName   xml.Name `xml:"Hsp"`
 	Num       int      `xml:"Hsp_num"`
 	Evalue    float64  `xml:"Hsp_evalue"`
+  BitScore  float64  `xml:"Hsp_bit-score"`
+  NumIdent  int      `xml:"Hsp_identity"`
+  AlnLen    int      `xml:"Hsp_align-len"`
 	QueryFrom int      `xml:"Hsp_query-from"`
 	QueryTo   int      `xml:"Hsp_query-to"`
 	HitFrom   int      `xml:"Hsp_hit-from"`

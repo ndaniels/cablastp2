@@ -42,6 +42,7 @@ var (
 	flagCpuProfile     = ""
 	flagMemProfile     = ""
 	flagCoarseEval     = 1000.0
+  flagCoarseBitScore = 20.0
 	flagNoCleanup      = false
 	flagCompressQuery  = false
 	flagBatchQueries   = false
@@ -69,6 +70,9 @@ func init() {
 		"The e-value threshold for the coarse search. This will NOT\n"+
 			"\tbe used on the fine search. The fine search e-value threshold\n"+
 			"\tcan be set in the 'blast-args' argument.")
+	flag.Float64Var(&flagCoarseBitScore, "coarse-bitscore", flagCoarseBitScore,
+		"The bit score threshold for the coarse search. This will NOT\n"+
+			"\tbe used on the fine search.")
 	flag.BoolVar(&flagNoCleanup, "no-cleanup", flagNoCleanup,
 		"When set, the temporary fine BLAST database that is created\n"+
 			"\twill NOT be deleted.")
@@ -252,7 +256,6 @@ func processQueries(
     cablastp.Vprintln("No results from coarse search")
   } else {
   
-
   	// Write the contents of the expanded sequences to a fasta file.
   	// It is then indexed using makeblastdb.
   	searchBuf.Reset()
@@ -517,7 +520,7 @@ func expandBlastHits(
 			}
 
 			// Make sure this hit is below the coarse e-value threshold.
-			if hsp.Evalue > flagCoarseEval {
+			if hsp.BitScore > flagCoarseBitScore {
 				continue
 			}
 
