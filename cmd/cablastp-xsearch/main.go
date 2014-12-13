@@ -110,6 +110,9 @@ func init() {
 		"The maximum number of residues to blindly extend a \n"+
 			"\tmatch without regard to sequence identity. This is \n"+
 			"\tto avoid small sequences in the coarse database.")
+	flag.IntVar(&argDBConf.GappedWindowSize, "gapped-window-size",
+		argDBConf.GappedWindowSize,
+		"The size of the gapped match window.")
 	flag.IntVar(&argDBConf.MapSeedSize, "map-seed-size",
 		argDBConf.MapSeedSize,
 		"The size of a seed in the K-mer map. This size combined with\n"+
