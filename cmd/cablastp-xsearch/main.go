@@ -42,7 +42,7 @@ var (
 	flagCpuProfile     = ""
 	flagMemProfile     = ""
 	flagCoarseEval     = 1000.0
-  flagCoarseBitScore = 20.0
+  flagCoarseBitScore = 0.0
 	flagNoCleanup      = false
 	flagCompressQuery  = false
 	flagBatchQueries   = false
