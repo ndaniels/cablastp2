@@ -520,7 +520,7 @@ func expandBlastHits(
 			}
 
 			// Make sure this hit is below the coarse e-value threshold.
-			if hsp.BitScore > flagCoarseBitScore {
+			if flagCoarseBitScore > 0.0 && hsp.BitScore > flagCoarseBitScore {
 				continue
 			}
 
