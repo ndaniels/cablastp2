@@ -369,6 +369,8 @@ func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inp
   		cablastp.Vprintln("Blasting original query on fine database...")
   		err = blastFine(db, targetTmpDir, transFineQueries)
   		handleFatalError("Error blasting fine database", err)
+      err = os.RemoveAll(targetTmpDir)
+      handleFatalError("Could not remove fine database", err)
     }
 		queryBuf.Reset()
 	}
