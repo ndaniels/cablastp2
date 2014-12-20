@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/ndaniels/cablastp2/blosum"
 	"os"
-	"runtime"
+  // "runtime"
 	"sync"
 )
 
