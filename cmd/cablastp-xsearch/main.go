@@ -113,6 +113,9 @@ func init() {
 	flag.IntVar(&argDBConf.GappedWindowSize, "gapped-window-size",
 		argDBConf.GappedWindowSize,
 		"The size of the gapped match window.")
+	flag.IntVar(&argDBConf.UngappedWindowSize, "ungapped-window-size",
+		argDBConf.UngappedWindowSize,
+		"The size of the ungapped match window.")
 	flag.IntVar(&argDBConf.MapSeedSize, "map-seed-size",
 		argDBConf.MapSeedSize,
 		"The size of a seed in the K-mer map. This size combined with\n"+

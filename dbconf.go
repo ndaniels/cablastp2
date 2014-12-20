@@ -34,7 +34,7 @@ var DefaultDBConf = &DBConf{
 	ExtSeqIdThreshold:   60,
 	MatchSeqIdThreshold: 70,
 	MatchExtend:         30,
-	MapSeedSize:         6,
+	MapSeedSize:         12,
 	ExtSeedSize:         0,
 	LowComplexity:       10,
 	SeedLowComplexity:   6,

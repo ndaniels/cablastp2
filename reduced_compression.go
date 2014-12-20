@@ -37,7 +37,9 @@ func StartCompressReducedWorkers(db *DB) redCompressPool {
 		wg:     wg,
 		closed: false,
 	}
-	for i := 0; i < max(1, runtime.GOMAXPROCS(0)); i++ {
+  // for queries, due to inherent similarities and proximity,
+  // this should only use one thread.
+	for i := 0; i < 1; i++ {
 		wg.Add(1)
 		go pool.worker()
 	}
@@ -132,7 +134,6 @@ func CompressReduced(db *DB, redSeqId int,
 	limit := olen - mapSeedSize - extSeedSize - skipSize
 	for current = 0; current <= limit; current += skipSize {
 		kmer := redSeq.Residues[current : current+mapSeedSize]
-
 		// skip wildcard-containing kmers
 		if bytes.IndexByte(kmer, 'N') > -1 {
 			continue
@@ -190,7 +191,7 @@ func CompressReduced(db *DB, redSeqId int,
 				db.GappedWindowSize, db.UngappedWindowSize,
 				db.MatchKmerSize, db.ExtSeqIdThreshold,
 				mem)
-
+        
 			// TODO if this original (reduced) sequence is overall shorter than the
 			// minimum match length, we should still accept it.
 
@@ -367,6 +368,7 @@ func extendMatch(corRes, orgRes []byte,
 		// quit and are forced to be satisfied with whatever
 		// corMatchLen and orgMatchLen are set to.
 		id := SeqIdentity(alignment[0], alignment[1])
+
 		if id < idThreshold {
 			break
 		}
@@ -535,7 +537,7 @@ func alignLen(seq []byte) (length int) {
 // for the next N-mer window is started.
 func alignUngapped(rseq []byte, oseq []byte,
 	windowSize, kmerSize, idThreshold int) int {
-
+    
 	length, scanned, successive := 0, 0, 0
 	tryNextWindow := true
 	for tryNextWindow {
