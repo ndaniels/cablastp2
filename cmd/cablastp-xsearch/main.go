@@ -47,6 +47,7 @@ var (
 	flagCompressQuery  = false
 	flagBatchQueries   = false
 	flagIterativeQuery = false
+  flagShortQueries   = true
 )
 
 // blastArgs are all the arguments after "--blast-args".
@@ -89,6 +90,8 @@ func init() {
 		"When set, will process queries one at a time instead of as a batch.")
 	flag.BoolVar(&flagCompressQuery, "compress-query", flagCompressQuery,
 		"When set, will process compress queries before search.")
+	flag.BoolVar(&flagShortQueries, "short-queries", flagShortQueries,
+		"When set, will assume query sequences are short, adjusting blast args.")
 
 	// compress options
 
@@ -569,13 +572,23 @@ func expandCoarseSequence(db *cablastp.DB, seqId int, coarseSequence *seq.Sequen
 
 func blastCoarse(
 	db *cablastp.DB, stdin *bytes.Reader, stdout *bytes.Buffer) error {
+  var cmd *exec.Cmd
 
-	cmd := exec.Command(
-		flagBlastn,
-		"-db", path.Join(db.Path, cablastp.FileBlastCoarse),
-		"-num_threads", s(flagGoMaxProcs),
-    "-task", "blastn-short", "-evalue", sf(flagCoarseEval), "-penalty", "-1",
-		"-outfmt", "5", "-dbsize", su(db.BlastDBSize))
+  if flagShortQueries {
+  	cmd = exec.Command(
+  		flagBlastn,
+  		"-db", path.Join(db.Path, cablastp.FileBlastCoarse),
+  		"-num_threads", s(flagGoMaxProcs),
+      "-task", "blastn-short", "-evalue", sf(flagCoarseEval), "-penalty", "-1",
+  		"-outfmt", "5", "-dbsize", su(db.BlastDBSize))
+  } else {
+  	cmd = exec.Command(
+  		flagBlastn,
+  		"-db", path.Join(db.Path, cablastp.FileBlastCoarse),
+  		"-num_threads", s(flagGoMaxProcs),
+      "-evalue", sf(flagCoarseEval),
+  		"-outfmt", "5", "-dbsize", su(db.BlastDBSize))
+  }
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	return cablastp.Exec(cmd)
