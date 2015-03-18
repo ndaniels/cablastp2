@@ -1,14 +1,20 @@
 ABOUT
 =====
 CaBLASTP is a family of programs for performing compressively-accelerated
-protein sequence searches based on the BLASTP family of tools (including 
+protein sequence searches based on the BLASTP family of tools (including BLASTX,
 PSI-BLAST and DELTA-BLAST), as well as a compression tool (cablastp-compress)
 for creating searchable, compressed databases based on an input FASTA file.
 
 If you use CaBLASTP, please cite:
 Daniels N, Gallant A, Peng J, Cowen L, Baym M, Berger B
 (2013) Compressive Genomics for Protein Databases. 
-Submitted for publication.
+Bioinformatics.
+
+AND
+
+Yu W, Daniels N, Danko D, Berger B:
+Entropy-scaling search of massive biological data
+Submitted for publication
 
 CaBLASTP is licensed under the GNU public license version 2.0. If you would
 like to license CaBLASTP in an environment where the GNU public license is
@@ -25,15 +31,15 @@ perform a compressively accelerated BLASTP search using a compressed database
 that has already been created.
 
     # Install CaBLASTP
-    go get github.com/BurntSushi/cablastp/...
+    go get github.com/ndaniels/cablastp2/...
 
     # Download and extract the database. It is large and could take a while.
     # Make sure to check for a newer version!
-    wget http://groups.csail.mit.edu/cb/cablastp/cablastp-nr20121212.tar.gz
-    tar zxf cablastp-nr20121212.tar.gz
+    wget http://giant.csail.mit.edu/gems/nr-20140917-cablastx.tgz
+    tar zxf nr-20140917-cablastx.tgz
 
     # Compressive BLAST search.
-    cablastp-search cablastp-nr20121212 query.fasta
+    cablastp-xsearch nr-20140917-cablastx query.fasta
 
 There are more examples covering more use cases further down.
 
@@ -42,7 +48,7 @@ INSTALLATION
 ============
 The easiest way to install is to download binaries compiled for your operating
 system. No other dependencies are required (sans BLASTP+).
-They can be downloaded here: http://groups.csail.mit.edu/cb/cablastp
+They can be downloaded here: http://gems.csail.mit.edu/
 
 Compiling from source is also easy; compiling CaBLASTP only requires that git 
 and Go are installed. If Go is not already available via your package manager,
@@ -61,7 +67,7 @@ And adding the following to your `~/.profile` or equivalent:
 
 Finally, run the following command to download, compile and install CaBLASTP:
 
-    go get github.com/BurntSushi/cablastp/...
+    go get github.com/ndaniels/cablastp2/...
 
 The CaBLASTP executables should be installed in `$GOPATH/bin`.
 
@@ -77,6 +83,8 @@ binaries for users without Go installed. They are:
                           nr.gz) into a compressed database for quick searching.
 
     cablastp-decompress   A rarely-needed inverse of cablastp-compress.
+    
+    cablastp-deltasearch  A compressively accelerated version of BLASTX.
 
     cablastp-search       A compressively accelerated version of BLASTP.
 
@@ -110,12 +118,12 @@ CaBLASTP.
 ADDITIONAL FILES
 ================
 As compression is compute-intensive, we provide an already-compressed database
-based on NCBI's NR from December 12, 2012, which we will update thrice yearly.
+based on NCBI's NR from September 17, 2014, which we will update thrice yearly.
 Since the CaBLASTP compressed database format is actually a directory 
-structure, we provide it as a .tar.gz file, so should be unarchived with 
-`tar zxf cablastp-nr20121212.tar.gz`.
+structure, we provide it as a .tgz file, so should be unarchived with 
+`tar zxf nr-20140917-cablastx.tgz`.
 
-The result will be a directory, 'cablastp-nr20121212', which contains the 
+The result will be a directory, 'nr-20140917-cablastx', which contains the 
 various files necessary for CaBLASTP to run.
 
 Should you wish to create your own compressed database, you would use the
@@ -123,7 +131,7 @@ cablastp-compress binary. The database we provide was created with:
 
     cablastp-compress --ext-seed-size 0 --match-seq-id-threshold 70 
                       --ext-seq-id-threshold 60 --max-seeds 20 -p 40
-                      cablastp-nr20121212 nr.fasta
+                      nr-20140917-cablastx nr.fasta
 
 Several of the command-line arguments are tuning parameters that affect the
 run-time performance of compression.
@@ -146,7 +154,7 @@ The -p argument simply sets the number of processor cores used during
 compression, and bears no relevance to the resulting compressed database.
 
 In this case, the input file is `nr.fasta`, and the output name for the
-compressed database is `cablastp-nr20121212`.
+compressed database is `nr-20140917-cablastx`.
 Note that the compressed database is actually a directory that will be created
 by `cablastp-compress`.
 
@@ -206,5 +214,5 @@ REPORTING BUGS
 If you find any bugs or have any problems using CaBLASTP, please submit a bug
 report on our issue tracker:
 
-    https://github.com/BurntSushi/cablastp/issues
+    https://github.com/ndaniels/cablastp2/issues
 
