@@ -579,7 +579,7 @@ func blastCoarse(
   		flagBlastn,
   		"-db", path.Join(db.Path, cablastp.FileBlastCoarse),
   		"-num_threads", s(flagGoMaxProcs),
-      "-num_descriptions", "100000", "-num_alignments", "100000", "-max_target_seqs", "100000",
+      "-max_target_seqs", "100000",
       "-task", "blastn-short", "-evalue", sf(flagCoarseEval), "-penalty", "-1",
   		"-outfmt", "5", "-dbsize", su(db.BlastDBSize))
   } else {
@@ -587,7 +587,7 @@ func blastCoarse(
   		flagBlastn,
   		"-db", path.Join(db.Path, cablastp.FileBlastCoarse),
   		"-num_threads", s(flagGoMaxProcs),
-      "-num_descriptions", "100000", "-num_alignments", "100000", "-max_target_seqs", "100000",
+      "-max_target_seqs", "100000",
       "-evalue", sf(flagCoarseEval),
   		"-outfmt", "5", "-dbsize", su(db.BlastDBSize))
   }
