@@ -90,7 +90,7 @@ binaries for users without Go installed. They are:
 
     cablastp-psisearch    A compressively accelerated version of PSI-BLAST.
 
-    cablastp-deltasearch  A compressively accelerated version of DELTA-BLAST.
+    cablastp-xsearch      A compressively accelerated version of BLASTX.
 
 Every executable can be run with the `--help` flag to get a list of command 
 line options.
