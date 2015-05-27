@@ -48,6 +48,7 @@ var (
 	flagBatchQueries   = false
 	flagIterativeQuery = false
   flagShortQueries   = true
+  flagQueryChunkSize = 100
 )
 
 // blastArgs are all the arguments after "--blast-args".
@@ -87,7 +88,9 @@ func init() {
 	flag.StringVar(&flagMemProfile, "memprofile", flagMemProfile,
 		"When set, a memory profile will be written to the file specified.")
 	flag.BoolVar(&flagIterativeQuery, "iterative-queries", flagIterativeQuery,
-		"When set, will process queries one at a time instead of as a batch.")
+		"When set, will process queries in chunks instead of as a batch.")
+	flag.IntVar(&flagQueryChunkSize, "l", flagQueryChunkSize,
+		"How many sequences to perform coarse search on at a time.")
 	flag.BoolVar(&flagCompressQuery, "compress-query", flagCompressQuery,
 		"When set, will process compress queries before search.")
 	flag.BoolVar(&flagShortQueries, "short-queries", flagShortQueries,
@@ -195,43 +198,25 @@ func main() {
 		inputFastaQuery, err := getInputFasta(inputFastaQueryName)
 		handleFatalError("Could not read input fasta query", err)
 
-		if flagIterativeQuery {
-			cablastp.Vprintln("\nProcessing Queries one at a time...")
-		}
-
 		f := fasta.NewWriter(queryBuf)
 		reader := fasta.NewReader(inputFastaQuery)
 
 		for i := 0; true; i++ {
+      
+      if flagIterativeQuery {
 
-			sequence, err := reader.Read()
-			if err == io.EOF {
-				break
-			}
-
-			if err != nil {
-				fatalf("Could not read input fasta query: %s\n", err)
-			}
-
-			origSeq := sequence.Bytes()
-			n := sequence.Name
-			// generate 6 ORFs
-			transSeqs := cablastp.Translate(origSeq)
-
-			for _, s := range transSeqs {
-				// reduce each one
-				result := seq.NewSequenceString(n, string(cablastp.Reduce(s)))
-
-				f.Write(result)
-
-			}
-
-			if flagIterativeQuery {
-				f.Flush()
+        for j := 0; j < flagQueryChunkSize; j++ {
+    			translateQueries(reader, f)
+        }
+				
 				transQueries := bytes.NewReader(queryBuf.Bytes())
 				processQueries(db, transQueries, searchBuf)
 				queryBuf.Reset()
-			}
+      
+      } else {
+        translateQueries(reader, f)
+      }
+			
 		}
 
 		if !flagIterativeQuery {
@@ -243,6 +228,32 @@ func main() {
 	}
 
 	cleanup(db)
+}
+
+func translateQueries(reader *fasta.Reader, f *fasta.Writer) error {
+  
+	sequence, err := reader.Read()
+	if err == io.EOF {
+		return nil
+	}
+	if err != nil {
+		fatalf("Could not read input fasta query: %s\n", err)
+	}
+
+	origSeq := sequence.Bytes()
+	n := sequence.Name
+	// generate 6 ORFs
+	transSeqs := cablastp.Translate(origSeq)
+
+	for _, s := range transSeqs {
+		// reduce each one
+		result := seq.NewSequenceString(n, string(cablastp.Reduce(s)))
+
+		f.Write(result)
+
+	}
+  f.Flush()
+  return nil
 }
 
 func processQueries(
