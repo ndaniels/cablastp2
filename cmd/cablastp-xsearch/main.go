@@ -311,10 +311,7 @@ func processQueries(
 
 func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inputQueryFilename string, searchBuf *bytes.Buffer) error {
 	cablastp.Vprintln("Compressing queries into a database...")
-	dbDirLoc, err := ioutil.TempDir("", "cablastp-tmp-query-db")
-	if err != nil {
-		return fmt.Errorf("Could not create temporary directory: %s\n", err)
-	}
+	dbDirLoc := "./tmp_query_database" // TODO this should be a parameter
 	qDBDirLoc, err := compressQueries(inputQueryFilename, queryDBConf, dbDirLoc)
 	handleFatalError("Error compressing queries", err)
 	cablastp.Vprintln("Opening DB for reading")
@@ -392,18 +389,14 @@ func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inp
   		cablastp.Vprintln("Blasting original query on fine database...")
   		err = blastFine(db, targetTmpDir, transFineQueries)
   		handleFatalError("Error blasting fine database", err)
-    	if !flagNoCleanup {
-    		err := os.RemoveAll(targetTmpDir)
-    		handleFatalError("Could not delete fine database", err)
-    	}
+      err = os.RemoveAll(targetTmpDir)
+      handleFatalError("Could not remove fine database", err)
     }
 		queryBuf.Reset()
 	}
 	cablastp.Vprintln("Cleaning up...")
-	if !flagNoCleanup {
-		err = os.RemoveAll(dbDirLoc)
-		handleFatalError("Could not delete fine database", err)
-	}
+	err = os.RemoveAll(dbDirLoc)
+	handleFatalError("Could not remove query database", err)
 	return nil
 }
 
