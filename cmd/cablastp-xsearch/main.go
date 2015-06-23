@@ -187,16 +187,18 @@ func main() {
 	// otherwise, just coarse search, decompress results, fine search.
 	// iterate over the query sequences in the input fasta
 	// initially, only implement standard search.
+  
+	inputFastaQuery, err := getInputFasta(inputFastaQueryName)
+	handleFatalError("Could not read input fasta query", err)
 
 	if flagCompressQuery {
 
-		processCompressedQueries(db, queryDBConf, inputFastaQueryName, searchBuf)
+		processCompressedQueries(db, queryDBConf, inputFastaQuery, searchBuf)
 
 	} else {
 
 		queryBuf := new(bytes.Buffer) // might need more than 1 buffer
-		inputFastaQuery, err := getInputFasta(inputFastaQueryName)
-		handleFatalError("Could not read input fasta query", err)
+
 
 		f := fasta.NewWriter(queryBuf)
 		reader := fasta.NewReader(inputFastaQuery)
@@ -231,7 +233,8 @@ func main() {
 }
 
 func translateQueries(reader *fasta.Reader, f *fasta.Writer) error {
-  
+  // this translates and alphabet-reduces each nucleotide query
+  // into 6 pseudoDNA (protein space) queries.
 	sequence, err := reader.Read()
 	if err == io.EOF {
 		return nil
@@ -245,9 +248,11 @@ func translateQueries(reader *fasta.Reader, f *fasta.Writer) error {
 	// generate 6 ORFs
 	transSeqs := cablastp.Translate(origSeq)
 
-	for _, s := range transSeqs {
+	for i, s := range transSeqs {
 		// reduce each one
-		result := seq.NewSequenceString(n, string(cablastp.Reduce(s)))
+    // should append to the name, something we can parse out
+    newName := fmt.Sprintf("%s-%i", n, i)
+		result := seq.NewSequenceString(newName, string(cablastp.Reduce(s)))
 
 		f.Write(result)
 
@@ -309,13 +314,40 @@ func processQueries(
 	return nil
 }
 
-func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inputQueryFilename string, searchBuf *bytes.Buffer) error {
+func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inputFastaQuery *bytes.Reader, searchBuf *bytes.Buffer) error {
+  
+  // first translate queries
+  queryBuf := new(bytes.Buffer)
+	f := fasta.NewWriter(queryBuf)
+	reader := fasta.NewReader(inputFastaQuery)
+
+	for i := 0; true; i++ { 
+    translateQueries(reader, f)
+  }
+	f.Flush()
+	transQueries := bytes.NewReader(queryBuf.Bytes())
+  
+  // then compress them
+  
 	cablastp.Vprintln("Compressing queries into a database...")
 	dbDirLoc, err := ioutil.TempDir("", "cablastp-tmp-query-db")
 	if err != nil {
 		return fmt.Errorf("Could not create temporary directory: %s\n", err)
 	}
-	qDBDirLoc, err := compressQueries(inputQueryFilename, queryDBConf, dbDirLoc)
+  
+  compressedQueryFilename := path.Join(dbDirLoc, "trans.fasta")
+  
+  buf, err := ioutil.ReadAll(transQueries)
+  if err != nil {
+    return fmt.Errorf("Could not read translated queries: %s\n", err)
+  }
+  
+  err = ioutil.WriteFile(compressedQueryFilename, buf, 0644)
+	if err != nil {
+		return fmt.Errorf("Could not write compressed query file: %s\n", err)
+	}
+  
+	qDBDirLoc, err := compressQueries(compressedQueryFilename, queryDBConf, dbDirLoc)
 	handleFatalError("Error compressing queries", err)
 	cablastp.Vprintln("Opening DB for reading")
 	qDB, err := cablastp.NewReadDB(qDBDirLoc)
@@ -325,9 +357,7 @@ func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inp
 	compQueries, err := getInputFasta(compQueryFilename)
 	handleFatalError("Error opening compressed query file", err)
 
-	queryBuf := new(bytes.Buffer)
-	f := fasta.NewWriter(queryBuf)
-	reader := fasta.NewReader(compQueries)
+	reader = fasta.NewReader(compQueries)
 
 	for origSeqID := 0; true; origSeqID++ {
 
@@ -340,20 +370,9 @@ func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inp
 			fatalf("Could not read input fasta query: %s\n", err)
 		}
 
-		origSeq := sequence.Bytes()
-		n := sequence.Name
-		// generate 6 ORFs
-		transSeqs := cablastp.Translate(origSeq)
-		for _, s := range transSeqs {
-			// reduce each one
-			result := seq.NewSequenceString(n, string(cablastp.Reduce(s)))
 
-			f.Write(result)
 
-		}
-
-		f.Flush()
-		transCoarseQueries := bytes.NewReader(queryBuf.Bytes())
+		transCoarseQueries := bytes.NewReader(sequence.Bytes())
 
 		cablastp.Vprintln("\nBlasting query on coarse database...")
 		err = blastCoarse(db, transCoarseQueries, searchBuf)
@@ -370,6 +389,18 @@ func processCompressedQueries(db *cablastp.DB, queryDBConf *cablastp.DBConf, inp
   		err = writeFasta(expandedSequences, searchBuf)
   		handleFatalError("Could not create FASTA input from coarse hits", err)
 
+      // FIXME this is now wrong. We need to expand the coarse query into
+      // the entire set of original *real nucleotide sequences* from which
+      // it was translated.
+      // those need to be stored somewhere, indexed by the translated
+      // seq ID
+      // ok so we're going to keep (in memory) a hash map from seq ID to
+      // original nucleotide sequence
+      // we'll populate it when we translate the queries
+      // and we'll pull from it using the query ID of the expQueries
+      
+      // for the future, we should consider writing this out to a temp file
+      // indexed by query ID
   		cablastp.Vprintln("Expanding coarse query...")
   		expQuery, err := expandCoarseSequence(qDB, origSeqID, &sequence)
   		handleFatalError("Could not expand coarse queries", err)
