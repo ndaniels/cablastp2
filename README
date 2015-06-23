@@ -1,5 +1,8 @@
 ABOUT
 =====
+This software has been deprecated in favor of [MICA](https://github.com/ndaniels/MICA) which accelerates both DIAMOND and BLASTX.
+
+
 CaBLASTP is a family of programs for performing compressively-accelerated
 protein sequence searches based on the BLASTP family of tools (including BLASTX,
 PSI-BLAST and DELTA-BLAST), as well as a compression tool (cablastp-compress)
